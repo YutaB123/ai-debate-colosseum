@@ -7,6 +7,7 @@ import { SpeechBubble } from "../../../components/speech-bubble";
 import { postControl } from "../../../lib/client/api";
 import { VoteBar } from "../../../components/vote-bar";
 import { InterjectInput } from "../../../components/interject-input";
+import { HuddlePanel } from "../../../components/huddle-panel";
 import type { DebateConfig, Debater, Team } from "../../../lib/types";
 import type { EngineEvent } from "../../../lib/engine/events";
 
@@ -66,6 +67,10 @@ export function Stage({ debate }: { debate: DebateConfig }) {
         <InterjectInput onSend={(text) => postControl(debate.id, { action: "interject", text })} />
       </div>
 
+      {state.huddleActive && (
+        <HuddlePanel debate={debate} whispers={state.currentHuddleWhispers} />
+      )}
+
       {state.verdict && (
         <div className="mt-8 p-4 border-2 border-amber-400 bg-amber-50 rounded">
           <div className="font-bold mb-1">Verdict</div>
@@ -97,6 +102,8 @@ interface DerivedState {
   paused: boolean;
   verdict: { winnerDebaterId: string | null; winnerTeamId: string | null; reasoning: string } | null;
   errors: string[];
+  huddleActive: boolean;
+  currentHuddleWhispers: { teamId: string; debaterId: string; text: string }[];
 }
 
 function deriveState(debate: DebateConfig, events: EngineEvent[]): DerivedState {
@@ -108,6 +115,8 @@ function deriveState(debate: DebateConfig, events: EngineEvent[]): DerivedState 
   const paused = false;
   let verdict: DerivedState["verdict"] = null;
   const errors: string[] = [];
+  let huddleActive = false;
+  let currentHuddleWhispers: { teamId: string; debaterId: string; text: string }[] = [];
 
   for (const e of events) {
     switch (e.type) {
@@ -134,6 +143,17 @@ function deriveState(debate: DebateConfig, events: EngineEvent[]): DerivedState 
         errors.push(`${e.debaterId} failed: ${e.reason}`);
         activeId = null;
         break;
+      case "huddle_start":
+        huddleActive = true;
+        currentHuddleWhispers = [];
+        roundNumber = e.roundNumber;
+        break;
+      case "whisper":
+        currentHuddleWhispers.push({ teamId: e.teamId, debaterId: e.debaterId, text: e.text });
+        break;
+      case "huddle_end":
+        huddleActive = false;
+        break;
       case "verdict":
         verdict = { winnerDebaterId: e.winnerDebaterId, winnerTeamId: e.winnerTeamId, reasoning: e.reasoning };
         break;
@@ -143,7 +163,7 @@ function deriveState(debate: DebateConfig, events: EngineEvent[]): DerivedState 
     }
   }
   const activeDebater = activeId ? debate.debaters.find((d) => d.id === activeId) ?? null : null;
-  return { roundNumber, activeDebater, currentText, currentTokens, textByDebater, paused, verdict, errors };
+  return { roundNumber, activeDebater, currentText, currentTokens, textByDebater, paused, verdict, errors, huddleActive, currentHuddleWhispers };
 }
 
 function findWinnerLabel(debate: DebateConfig, v: { winnerDebaterId: string | null; winnerTeamId: string | null }): string {
