@@ -11,13 +11,14 @@ interface DebaterRow {
   model: string;
   displayName: string;
   stance: string;
+  aiChoosesStance: boolean;
   teamIndex: number | null;
   voiceUri: string;
 }
 
 const blankDebater = (i: number): DebaterRow => ({
   provider: "openai", model: "gpt-4o", displayName: "Debater " + (i + 1),
-  stance: "", teamIndex: null, voiceUri: "",
+  stance: "", aiChoosesStance: false, teamIndex: null, voiceUri: "",
 });
 
 export function SetupForm() {
@@ -43,7 +44,7 @@ export function SetupForm() {
   const removeDebater = (i: number) => setDebaters((arr) => arr.length > 2 ? arr.filter((_, idx) => idx !== i) : arr);
 
   const canSubmit = topic.length > 0
-    && debaters.every((d) => d.stance.length > 0 && d.voiceUri.length > 0)
+    && debaters.every((d) => (d.aiChoosesStance || d.stance.length > 0) && d.voiceUri.length > 0)
     && !debaters.some((d) => `${d.provider}:${d.model}` === judgeModel);
 
   const submit = async () => {
@@ -53,7 +54,8 @@ export function SetupForm() {
         topic, judgeModel, roundCount: rounds, maxTokens, teamsEnabled, teams,
         debaters: debaters.map((d, i) => ({
           provider: d.provider, model: d.model, displayName: d.displayName,
-          stance: d.stance, teamIndex: teamsEnabled ? (d.teamIndex ?? 0) : null,
+          stance: d.aiChoosesStance ? "" : d.stance,
+          teamIndex: teamsEnabled ? (d.teamIndex ?? 0) : null,
           speakOrder: i, voiceUri: d.voiceUri,
         })),
       };
@@ -127,9 +129,18 @@ export function SetupForm() {
                 <button type="button" className="text-red-600 text-sm ml-auto"
                         onClick={() => removeDebater(i)} disabled={debaters.length <= 2}>Remove</button>
               </div>
-              <input className="w-full border rounded px-2 py-1 text-sm"
-                     placeholder="Stance (what this AI must defend)"
-                     value={d.stance} onChange={(e) => updateDebater(i, { stance: e.target.value })} />
+              <div className="flex gap-2 items-center">
+                <input className="flex-1 border rounded px-2 py-1 text-sm disabled:bg-gray-100 disabled:text-gray-400"
+                       placeholder={d.aiChoosesStance ? "AI will pick its own side" : "Stance (what this AI must defend)"}
+                       disabled={d.aiChoosesStance}
+                       value={d.aiChoosesStance ? "" : d.stance}
+                       onChange={(e) => updateDebater(i, { stance: e.target.value })} />
+                <label className="flex items-center gap-1 text-xs whitespace-nowrap">
+                  <input type="checkbox" checked={d.aiChoosesStance}
+                         onChange={(e) => updateDebater(i, { aiChoosesStance: e.target.checked })} />
+                  Let AI pick side
+                </label>
+              </div>
             </div>
           ))}
           <button type="button" className="text-blue-600 text-sm"

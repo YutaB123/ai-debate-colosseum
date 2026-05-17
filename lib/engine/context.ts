@@ -26,8 +26,9 @@ function renderTranscript(d: DebateConfig, transcript: TranscriptRound[]): strin
     for (const s of r.speeches) {
       const sp = lookupDebater(d, s.debaterId);
       const team = d.teamsEnabled ? ` (${teamName(d, sp.teamId)})` : "";
+      const stanceLabel = sp.stance ? ` — "${sp.stance}"` : " (picks own side)";
       const errSuffix = s.error ? ` [interrupted: ${s.error}]` : "";
-      lines.push(`Round ${r.roundNumber}, ${sp.displayName}${team} — "${sp.stance}":\n  ${s.text}${errSuffix}`);
+      lines.push(`Round ${r.roundNumber}, ${sp.displayName}${team}${stanceLabel}:\n  ${s.text}${errSuffix}`);
     }
   }
   return lines.join("\n\n");
@@ -67,10 +68,14 @@ export function buildSpeechContext(args: BuildArgs): ProviderMessage[] {
     ? `You are on team "${teamName(debate, speaker.teamId)}" with: ${teammates(debate, speaker) || "(no other teammates)"}.`
     : "";
 
+  const stanceLine = speaker.stance
+    ? `Your assigned position: "${speaker.stance}". You must defend this position.`
+    : `You may pick any defensible position on this topic. State your position clearly in your first turn and defend it consistently for the rest of the debate — do not switch sides mid-debate.`;
+
   const systemPrompt = [
     `You are ${speaker.displayName}, debating in a structured debate.`,
     `Topic: "${debate.topic}".`,
-    `Your assigned position: "${speaker.stance}". You must defend this position.`,
+    stanceLine,
     teamLine,
     `This is round ${roundNumber} of ${debate.roundCount}.`,
     `Speak for at most ${debate.maxTokens} tokens. Be direct and substantive — no preamble, no signoff.`,
@@ -95,11 +100,15 @@ export function buildSpeechContext(args: BuildArgs): ProviderMessage[] {
 export function buildHuddleContext(args: BuildArgs): ProviderMessage[] {
   const { debate, speaker, roundNumber, transcript } = args;
   const teamLabel = teamName(debate, speaker.teamId);
+  const stanceLine = speaker.stance
+    ? `Topic: "${debate.topic}". Your team position: "${speaker.stance}".`
+    : `Topic: "${debate.topic}". Your team picks its own side — coordinate which position you'll all defend.`;
+
   const systemPrompt = [
     `You are ${speaker.displayName} on team "${teamLabel}".`,
     `You are in a PRIVATE huddle. Anything you write here is visible only to your teammates: ${teammates(debate, speaker) || "(none)"}.`,
     `The opposing team and the judge will NEVER see this message.`,
-    `Topic: "${debate.topic}". Your team position: "${speaker.stance}".`,
+    stanceLine,
     `It is between round ${roundNumber} and ${roundNumber + 1} of ${debate.roundCount}.`,
     `Write ONE short tactical note to your teammates: what to emphasize, what argument to make next, what to avoid. Be specific. Maximum ${Math.floor(debate.maxTokens / 2)} tokens.`,
   ].join("\n");
@@ -118,9 +127,11 @@ export function buildHuddleContext(args: BuildArgs): ProviderMessage[] {
 
 export function buildJudgeContext(args: { debate: DebateConfig; transcript: TranscriptRound[] }): ProviderMessage[] {
   const { debate, transcript } = args;
-  const debaterLines = debate.debaters.map((d) =>
-    `- ${d.displayName} (${d.provider}/${d.model}${debate.teamsEnabled ? `, team ${teamName(debate, d.teamId)}` : ""}): "${d.stance}"`
-  ).join("\n");
+  const debaterLines = debate.debaters.map((d) => {
+    const teamSuffix = debate.teamsEnabled ? `, team ${teamName(debate, d.teamId)}` : "";
+    const stanceLabel = d.stance ? `"${d.stance}"` : "(picked own side — read transcript to see what they argued)";
+    return `- ${d.displayName} (${d.provider}/${d.model}${teamSuffix}): ${stanceLabel}`;
+  }).join("\n");
 
   const systemPrompt = [
     `You are an impartial judge for a structured debate.`,
