@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { DB } from "./connection";
 
 export interface TranscriptRound {
+  roundId: string;
   roundNumber: number;
   speeches: { debaterId: string; text: string; tokenCount: number; error: string | null }[];
   whispers: { debaterId: string; teamId: string; text: string }[];
@@ -88,7 +89,7 @@ export function getFullTranscript(db: DB, debateId: string): FullTranscript {
     ).all(r.id) as any[];
     const votes = db.prepare(`SELECT debater_id as debaterId FROM votes WHERE round_id = ?`).all(r.id) as any[];
     const interjections = db.prepare(`SELECT text FROM interjections WHERE round_id = ? ORDER BY created_at`).all(r.id) as any[];
-    return { roundNumber: r.round_number, speeches, whispers, votes, interjections };
+    return { roundId: r.id, roundNumber: r.round_number, speeches, whispers, votes, interjections };
   });
   const v = db.prepare(`SELECT * FROM verdicts WHERE debate_id = ?`).get(debateId) as any;
   const verdict = v ? {

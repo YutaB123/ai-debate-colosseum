@@ -5,6 +5,8 @@ import { useSpeak } from "../../../lib/client/use-speak";
 import { Podium } from "../../../components/podium";
 import { SpeechBubble } from "../../../components/speech-bubble";
 import { postControl } from "../../../lib/client/api";
+import { VoteBar } from "../../../components/vote-bar";
+import { InterjectInput } from "../../../components/interject-input";
 import type { DebateConfig, Debater, Team } from "../../../lib/types";
 import type { EngineEvent } from "../../../lib/engine/events";
 
@@ -44,6 +46,24 @@ export function Stage({ debate }: { debate: DebateConfig }) {
           return <PodiumSlot key={d.id} debater={d} team={team} active={active}
                              debateText={state.textByDebater[d.id] ?? ""} />;
         })}
+      </div>
+
+      <div className="mt-6 p-3 border rounded bg-white space-y-2 max-w-3xl mx-auto">
+        <VoteBar
+          debaters={debate.debaters}
+          currentVote={null}
+          onVote={(debaterId) => {
+            fetch(`/api/debates/${debate.id}`)
+              .then((r) => r.json())
+              .then((j) => {
+                const rounds = j.transcript?.rounds ?? [];
+                const latest = rounds[rounds.length - 1];
+                if (!latest) return;
+                postControl(debate.id, { action: "vote", roundId: latest.roundId, debaterId });
+              });
+          }}
+        />
+        <InterjectInput onSend={(text) => postControl(debate.id, { action: "interject", text })} />
       </div>
 
       {state.verdict && (
