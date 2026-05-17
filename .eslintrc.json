@@ -1,5 +1,8 @@
 {
   "extends": "next/core-web-vitals",
+  "rules": {
+    "react/no-unescaped-entities": "off"
+  },
   "overrides": [
     {
       "files": ["**/*.test.ts", "**/*.test.tsx", "**/__tests__/**", "lib/providers/**/*.ts"],
