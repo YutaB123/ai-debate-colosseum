@@ -1,36 +1,38 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AI Debate Colosseum
 
-## Getting Started
+Locally-run web app: pit AI models from different providers against each other in structured real-time debates.
 
-First, run the development server:
+## Quick start
+
+1. Copy `.env.local.example` to `.env.local` and fill in the API keys you have. You don't need all four — only the providers you intend to use must have keys.
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Start the dev server:
+   ```bash
+   npm run dev
+   ```
+4. Open `http://localhost:3000`. Click **New Debate** to configure one.
+
+## Without API keys (stub mode)
+
+To run the UI end-to-end with scripted responses (no real API calls):
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+DEBATE_USE_STUB_PROVIDERS=true npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+(On PowerShell: `$env:DEBATE_USE_STUB_PROVIDERS = "true"; npm run dev`)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Testing
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm test       # unit + integration tests
+npm run e2e    # end-to-end test (uses stub providers)
+```
 
-## Learn More
+## Spec & plan
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Design spec: `docs/superpowers/specs/2026-05-17-ai-debate-design.md`
+- Implementation plan: `docs/superpowers/plans/2026-05-17-ai-debate-colosseum.md`
