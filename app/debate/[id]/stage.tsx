@@ -1,5 +1,5 @@
 "use client";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSse } from "../../../lib/client/use-sse";
 import { useSpeak } from "../../../lib/client/use-speak";
 import { Podium } from "../../../components/podium";
@@ -11,8 +11,11 @@ import { HuddlePanel } from "../../../components/huddle-panel";
 import type { DebateConfig, Debater, Team } from "../../../lib/types";
 import type { EngineEvent } from "../../../lib/engine/events";
 
-export function Stage({ debate }: { debate: DebateConfig }) {
-  const { events, connected } = useSse<EngineEvent>(`/api/debates/${debate.id}/stream`);
+export function Stage({ debate, replay }: { debate: DebateConfig; replay?: { rounds: any[]; verdict: any } }) {
+  const live = useSse<EngineEvent>(replay ? null : `/api/debates/${debate.id}/stream`);
+  const replayed = useReplayEvents(replay, debate);
+  const events = replay ? replayed.events : live.events;
+  const connected = replay ? replayed.done : live.connected;
 
   const state = useMemo(() => deriveState(debate, events), [debate, events]);
 
@@ -186,4 +189,54 @@ function findWinnerLabel(debate: DebateConfig, v: { winnerDebaterId: string | nu
   if (v.winnerDebaterId) return debate.debaters.find((d) => d.id === v.winnerDebaterId)?.displayName ?? "?";
   if (v.winnerTeamId) return debate.teams.find((t) => t.id === v.winnerTeamId)?.name ?? "?";
   return "no clear winner";
+}
+
+function useReplayEvents(replay: { rounds: any[]; verdict: any } | undefined, debate: DebateConfig) {
+  const [events, setEvents] = useState<EngineEvent[]>([]);
+  const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    if (!replay) return;
+    let cancelled = false;
+    (async () => {
+      const out: EngineEvent[] = [];
+      for (const r of replay.rounds) {
+        for (const s of r.speeches) {
+          out.push({ type: "turn_start", roundNumber: r.roundNumber, debaterId: s.debaterId });
+          setEvents([...out]);
+          for (let i = 0; i < s.text.length; i += 80) {
+            await new Promise((res) => setTimeout(res, 150));
+            if (cancelled) return;
+            out.push({ type: "chunk", debaterId: s.debaterId, text: s.text.slice(i, i + 80) });
+            setEvents([...out]);
+          }
+          out.push({ type: "turn_end", debaterId: s.debaterId, fullText: s.text, tokenCount: s.tokenCount });
+          setEvents([...out]);
+        }
+        if (r.whispers.length > 0) {
+          out.push({ type: "huddle_start", roundNumber: r.roundNumber });
+          for (const w of r.whispers) {
+            out.push({ type: "whisper", teamId: w.teamId, debaterId: w.debaterId, text: w.text });
+          }
+          out.push({ type: "huddle_end", roundNumber: r.roundNumber });
+          setEvents([...out]);
+        }
+        out.push({ type: "round_end", roundNumber: r.roundNumber });
+        setEvents([...out]);
+      }
+      if (replay.verdict) {
+        out.push({
+          type: "verdict",
+          winnerDebaterId: replay.verdict.winnerDebaterId,
+          winnerTeamId: replay.verdict.winnerTeamId,
+          reasoning: replay.verdict.reasoning,
+        });
+        setEvents([...out]);
+      }
+      setDone(true);
+    })();
+    return () => { cancelled = true; };
+  }, [replay, debate]);
+
+  return { events, done };
 }
