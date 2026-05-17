@@ -19,6 +19,7 @@ export function Stage({ debate, replay }: { debate: DebateConfig; replay?: { rou
 
   const state = useMemo(() => deriveState(debate, events), [debate, events]);
   const [paused, setPaused] = useState(false);
+  const [votedFor, setVotedFor] = useState<{ roundId: string; debaterId: string } | null>(null);
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-yellow-50 to-white p-6">
@@ -60,7 +61,7 @@ export function Stage({ debate, replay }: { debate: DebateConfig; replay?: { rou
       <div className="mt-6 p-3 border rounded bg-white space-y-2 max-w-3xl mx-auto">
         <VoteBar
           debaters={debate.debaters}
-          currentVote={null}
+          currentVote={votedFor?.debaterId ?? null}
           onVote={(debaterId) => {
             fetch(`/api/debates/${debate.id}`)
               .then((r) => r.json())
@@ -69,6 +70,7 @@ export function Stage({ debate, replay }: { debate: DebateConfig; replay?: { rou
                 const latest = rounds[rounds.length - 1];
                 if (!latest) return;
                 postControl(debate.id, { action: "vote", roundId: latest.roundId, debaterId });
+                setVotedFor({ roundId: latest.roundId, debaterId });
               });
           }}
         />
