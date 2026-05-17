@@ -32,7 +32,7 @@ export function validateDebateRequest(body: any): { ok: true; body: DebateReques
   const used = new Set<string>(body.debaters.map((d: any) => d.provider));
   used.add(body.judgeModel.split(":")[0]);
   const missing: string[] = [];
-  for (const p of used) {
+  for (const p of Array.from(used)) {
     const envName = providerEnvVar(p as ProviderId);
     if (!process.env[envName]) missing.push(`${p} (${envName})`);
   }
