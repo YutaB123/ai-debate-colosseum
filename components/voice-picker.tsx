@@ -2,9 +2,9 @@
 import { useVoices } from "../lib/client/use-voices";
 
 export function VoicePicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const voices = useVoices();
+  const voices = useVoices().filter((v) => v.lang.toLowerCase().startsWith("en"));
   if (voices.length === 0) {
-    return <span className="text-xs text-gray-500">(no voices available)</span>;
+    return <span className="text-xs text-gray-500">(no English voices available)</span>;
   }
   return (
     <select
