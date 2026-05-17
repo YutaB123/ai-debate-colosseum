@@ -3,6 +3,8 @@ import { getDb } from "../../../lib/db/connection";
 import { createDebate, listDebates } from "../../../lib/db/repo";
 import { validateDebateRequest } from "../../../lib/api/validate";
 
+export const runtime = "nodejs";
+
 export async function POST(req: Request): Promise<Response> {
   let json: any;
   try {

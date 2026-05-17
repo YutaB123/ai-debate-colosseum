@@ -3,6 +3,7 @@ import { getDb } from "../../lib/db/connection";
 import { listDebates } from "../../lib/db/repo";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export default async function HistoryPage() {
   const rows = listDebates(getDb());
