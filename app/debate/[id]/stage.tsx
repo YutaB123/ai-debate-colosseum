@@ -18,6 +18,7 @@ export function Stage({ debate, replay }: { debate: DebateConfig; replay?: { rou
   const connected = replay ? replayed.done : live.connected;
 
   const state = useMemo(() => deriveState(debate, events), [debate, events]);
+  const [paused, setPaused] = useState(false);
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-yellow-50 to-white p-6">
@@ -27,8 +28,12 @@ export function Stage({ debate, replay }: { debate: DebateConfig; replay?: { rou
           Round {state.roundNumber}/{debate.roundCount} · {connected ? "● live" : "○ disconnected"}
         </div>
         <div className="flex gap-2">
-          <button onClick={() => postControl(debate.id, { action: state.paused ? "resume" : "pause" })}
-                  className="px-3 py-1 border rounded text-sm">{state.paused ? "▶ Resume" : "⏸ Pause"}</button>
+          <button onClick={() => {
+                    const newPaused = !paused;
+                    setPaused(newPaused);
+                    postControl(debate.id, { action: newPaused ? "pause" : "resume" });
+                  }}
+                  className="px-3 py-1 border rounded text-sm">{paused ? "▶ Resume" : "⏸ Pause"}</button>
           <button onClick={() => postControl(debate.id, { action: "skip" })}
                   className="px-3 py-1 border rounded text-sm">⏭ Skip</button>
         </div>
@@ -118,7 +123,6 @@ interface DerivedState {
   currentText: string;
   currentTokens: number;
   textByDebater: Record<string, string>;
-  paused: boolean;
   verdict: { winnerDebaterId: string | null; winnerTeamId: string | null; reasoning: string } | null;
   errors: string[];
   huddleActive: boolean;
@@ -131,7 +135,6 @@ function deriveState(debate: DebateConfig, events: EngineEvent[]): DerivedState 
   let currentText = "";
   let currentTokens = 0;
   const textByDebater: Record<string, string> = {};
-  const paused = false;
   let verdict: DerivedState["verdict"] = null;
   const errors: string[] = [];
   let huddleActive = false;
@@ -182,7 +185,7 @@ function deriveState(debate: DebateConfig, events: EngineEvent[]): DerivedState 
     }
   }
   const activeDebater = activeId ? debate.debaters.find((d) => d.id === activeId) ?? null : null;
-  return { roundNumber, activeDebater, currentText, currentTokens, textByDebater, paused, verdict, errors, huddleActive, currentHuddleWhispers };
+  return { roundNumber, activeDebater, currentText, currentTokens, textByDebater, verdict, errors, huddleActive, currentHuddleWhispers };
 }
 
 function findWinnerLabel(debate: DebateConfig, v: { winnerDebaterId: string | null; winnerTeamId: string | null }): string {
