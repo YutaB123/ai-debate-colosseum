@@ -1,6 +1,7 @@
 import type { ProviderId, StreamingProvider } from "../types";
 import { createStubProvider } from "./stub";
 import { createOpenAIProvider } from "./openai";
+import { createAnthropicProvider } from "./anthropic";
 
 const KNOWN: ProviderId[] = ["openai", "anthropic", "deepseek", "gemini"];
 
@@ -20,6 +21,7 @@ export function getProvider(id: ProviderId): StreamingProvider {
         baseURL: "https://api.deepseek.com/v1",
       });
     case "anthropic":
+      return createAnthropicProvider({ apiKey: requireEnv("ANTHROPIC_API_KEY") });
     case "gemini":
       throw new Error(`real provider for ${id} not yet implemented`);
   }
