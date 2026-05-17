@@ -2,6 +2,7 @@ import type { ProviderId, StreamingProvider } from "../types";
 import { createStubProvider } from "./stub";
 import { createOpenAIProvider } from "./openai";
 import { createAnthropicProvider } from "./anthropic";
+import { createGeminiProvider } from "./gemini";
 
 const KNOWN: ProviderId[] = ["openai", "anthropic", "deepseek", "gemini"];
 
@@ -23,7 +24,7 @@ export function getProvider(id: ProviderId): StreamingProvider {
     case "anthropic":
       return createAnthropicProvider({ apiKey: requireEnv("ANTHROPIC_API_KEY") });
     case "gemini":
-      throw new Error(`real provider for ${id} not yet implemented`);
+      return createGeminiProvider({ apiKey: requireEnv("GOOGLE_API_KEY") });
   }
 }
 
