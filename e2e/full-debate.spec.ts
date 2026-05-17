@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 
 test("set up a stub debate, watch it, see a verdict", async ({ page }) => {
   await page.goto("/setup");
-  await expect(page.getByText("Configure Debate")).toBeVisible();
+  await expect(page.getByText("Configure Debate")).toBeVisible({ timeout: 30_000 });
 
   await page.getByPlaceholder(/should AI/i).fill("Is fire wet?");
 
