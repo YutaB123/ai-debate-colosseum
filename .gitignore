@@ -14,9 +14,6 @@ node_modules/
 out/
 build/
 
-# production
-/build
-
 # env
 .env
 .env.local
