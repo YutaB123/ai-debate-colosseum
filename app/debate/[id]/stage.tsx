@@ -76,6 +76,22 @@ export function Stage({ debate }: { debate: DebateConfig }) {
           <div className="font-bold mb-1">Verdict</div>
           <div>Winner: {findWinnerLabel(debate, state.verdict)}</div>
           <p className="text-sm mt-2">{state.verdict.reasoning}</p>
+          <div className="mt-3 pt-3 border-t border-amber-300 flex flex-wrap gap-2 items-center">
+            <span className="text-sm font-semibold">Override winner:</span>
+            {debate.debaters.map((d) => (
+              <button key={d.id}
+                      className="px-3 py-1 border rounded text-sm bg-white"
+                      onClick={() =>
+                        fetch(`/api/debates/${debate.id}/verdict`, {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ override: d.id }),
+                        })
+                      }>
+                {d.displayName}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
