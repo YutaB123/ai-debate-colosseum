@@ -23,7 +23,7 @@ function mkDebate(): DebateConfig {
 }
 
 const transcript = [
-  { roundNumber: 1, speeches: [
+  { roundId: "r1", roundNumber: 1, speeches: [
     { debaterId: "claude", text: "Wet because plasma.", tokenCount: 5, error: null },
     { debaterId: "ds",     text: "Wet because steam.",  tokenCount: 5, error: null },
     { debaterId: "gpt",    text: "Dry by definition.",  tokenCount: 5, error: null },
@@ -60,7 +60,7 @@ describe("context builder", () => {
 
   it("includes interjections in the context", () => {
     const d = mkDebate();
-    const tr2 = [...transcript, { roundNumber: 2, speeches: [], whispers: [],
+    const tr2 = [...transcript, { roundId: "r2", roundNumber: 2, speeches: [], whispers: [],
       votes: [], interjections: [{ text: "Mod says: focus" }] }];
     const ctx = buildSpeechContext({ debate: d, speaker: d.debaters[0], roundNumber: 2, transcript: tr2 });
     expect(ctx.some((m) => m.content.includes("Mod says: focus"))).toBe(true);
