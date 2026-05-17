@@ -23,7 +23,7 @@ const config: Config = {
         "<rootDir>/app/**/*.test.tsx",
         "<rootDir>/lib/client/**/*.test.ts",
       ],
-      setupFiles: ["<rootDir>/jest.setup.ts"],
+      setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
       moduleNameMapper: { "^@/(.*)$": "<rootDir>/$1" },
     },
   ],
