@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "../../../lib/db/connection";
-import { createDebate } from "../../../lib/db/repo";
+import { createDebate, listDebates } from "../../../lib/db/repo";
 import { validateDebateRequest } from "../../../lib/api/validate";
 
 export async function POST(req: Request): Promise<Response> {
@@ -15,4 +15,8 @@ export async function POST(req: Request): Promise<Response> {
 
   const id = createDebate(getDb(), v.body);
   return NextResponse.json({ id }, { status: 201 });
+}
+
+export async function GET(): Promise<Response> {
+  return NextResponse.json({ debates: listDebates(getDb()) });
 }
