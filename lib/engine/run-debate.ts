@@ -21,12 +21,13 @@ export async function runDebate(args: RunDebateArgs): Promise<void> {
 
   try {
     for (let n = 1; n <= debate.roundCount; n++) {
+      if (signals.endDebate) break;
       const roundId = createRound(db, debate.id, n);
       await runRound({ db, debate, roundId, roundNumber: n, signals, emit });
 
-      // Run huddle after every round except the last.
+      if (signals.endDebate) break;
       if (n < debate.roundCount) {
-        await runHuddle({ db, debate, roundId, roundNumber: n, emit });
+        await runHuddle({ db, debate, roundId, roundNumber: n, signals, emit });
       }
     }
 

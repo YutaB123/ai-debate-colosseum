@@ -20,18 +20,20 @@ export async function runRound(args: RunRoundArgs): Promise<void> {
   setRoundStatus(db, roundId, "speaking");
 
   for (const debater of debate.debaters) {
+    if (signals.endDebate) break;
     if (debater.disabled) continue;
 
-    // Honor pending interjection by recording it before this debater speaks.
     if (signals.pendingInterjection) {
-      recordInterjection(db, roundId, signals.pendingInterjection);
+      const text = signals.pendingInterjection;
+      recordInterjection(db, roundId, text);
       signals.pendingInterjection = null;
+      emit({ type: "interjection_received", roundNumber, text });
     }
 
-    // Wait while paused.
-    while (signals.paused) {
+    while (signals.paused && !signals.endDebate) {
       await new Promise((r) => setTimeout(r, 100));
     }
+    if (signals.endDebate) break;
 
     signals.skipCurrent = false;
     emit({ type: "turn_start", roundNumber, debaterId: debater.id });
@@ -51,7 +53,11 @@ export async function runRound(args: RunRoundArgs): Promise<void> {
         messages,
         maxTokens: debate.maxTokens,
       })) {
-        if (signals.skipCurrent) break;
+        if (signals.skipCurrent || signals.endDebate) break;
+        while (signals.paused && !signals.endDebate && !signals.skipCurrent) {
+          await new Promise((r) => setTimeout(r, 100));
+        }
+        if (signals.skipCurrent || signals.endDebate) break;
         if (chunk.type === "error") {
           error = chunk.message;
           break;

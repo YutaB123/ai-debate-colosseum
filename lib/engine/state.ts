@@ -4,6 +4,7 @@ import type { EngineEvent } from "./events";
 export interface ControlSignals {
   paused: boolean;
   skipCurrent: boolean;
+  endDebate: boolean;
   pendingInterjection: string | null;
 }
 

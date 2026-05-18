@@ -1,6 +1,7 @@
 import type { DB } from "../db/connection";
 import type { DebateConfig } from "../types";
 import type { EngineEvent } from "./events";
+import type { ControlSignals } from "./state";
 import { getProvider } from "../providers/registry";
 import { buildHuddleContext } from "./context";
 import { getFullTranscript, recordWhisper, setRoundStatus } from "../db/round-repo";
@@ -10,11 +11,13 @@ export interface RunHuddleArgs {
   debate: DebateConfig;
   roundId: string;
   roundNumber: number;
+  signals?: ControlSignals;
   emit: (e: EngineEvent) => void;
 }
 
 export async function runHuddle(args: RunHuddleArgs): Promise<void> {
-  const { db, debate, roundId, roundNumber, emit } = args;
+  const { db, debate, roundId, roundNumber, signals, emit } = args;
+  if (signals?.endDebate) return;
   if (!debate.teamsEnabled) return;
 
   setRoundStatus(db, roundId, "huddle");

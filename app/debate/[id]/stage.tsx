@@ -25,6 +25,18 @@ export function Stage({ debate, replay }: { debate: DebateConfig; replay?: { rou
   const state = useMemo(() => deriveState(debate, events), [debate, events]);
   const [paused, setPaused] = useState(false);
   const [votedFor, setVotedFor] = useState<{ roundId: string; debaterId: string } | null>(null);
+  const [controlError, setControlError] = useState<string | null>(null);
+  const [ending, setEnding] = useState(false);
+
+  const ctrl = async (action: any) => {
+    setControlError(null);
+    try {
+      await postControl(debate.id, action);
+    } catch (e: any) {
+      setControlError(e?.message ?? "control request failed");
+      setTimeout(() => setControlError(null), 4000);
+    }
+  };
 
   // The narrator plays speeches one at a time and drives all UI sync.
   const narrator = useNarrator(state.speeches, debate.debaters);
@@ -44,24 +56,52 @@ export function Stage({ debate, replay }: { debate: DebateConfig; replay?: { rou
 
   const heardCount = (narrator.playedThrough + 1) + (narrator.speakingIndex >= 0 ? 1 : 0);
 
+  const interjections = events.filter((e) => e.type === "interjection_received") as Array<{ type: "interjection_received"; roundNumber: number; text: string }>;
+  const debateEnded = ending || !!state.verdict;
+
   return (
-    <main className="min-h-screen bg-gradient-to-b from-yellow-50 to-white p-6">
-      <header className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold">{debate.topic}</h1>
-        <div className="text-sm">
+    <main className="min-h-screen bg-gradient-to-b from-yellow-50 to-white p-4 sm:p-6 text-gray-900">
+      <header className="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <h1 className="text-xl font-bold min-w-0 break-words flex-1">{debate.topic}</h1>
+        <div className="text-sm text-gray-700 shrink-0">
           {showVerdict ? "done" : `turn ${Math.max(heardCount, 1)}`} · {connected ? "● live" : "○ disconnected"}
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
           <button onClick={() => {
                     const newPaused = !paused;
                     setPaused(newPaused);
-                    postControl(debate.id, { action: newPaused ? "pause" : "resume" });
+                    ctrl({ action: newPaused ? "pause" : "resume" });
                   }}
-                  className="px-3 py-1 border rounded text-sm">{paused ? "▶ Resume" : "⏸ Pause"}</button>
-          <button onClick={() => postControl(debate.id, { action: "skip" })}
-                  className="px-3 py-1 border rounded text-sm">⏭ Skip</button>
+                  disabled={debateEnded}
+                  className="px-3 py-2 border rounded text-sm bg-white text-gray-900 disabled:opacity-50 min-h-[40px]">{paused ? "▶ Resume" : "⏸ Pause"}</button>
+          <button onClick={() => ctrl({ action: "skip" })}
+                  disabled={debateEnded}
+                  className="px-3 py-2 border rounded text-sm bg-white text-gray-900 disabled:opacity-50 min-h-[40px]">⏭ Skip</button>
+          <button onClick={async () => {
+                    if (debateEnded) return;
+                    if (!confirm("End the debate now? The judge will evaluate whatever has been said so far.")) return;
+                    setEnding(true);
+                    await ctrl({ action: "end" });
+                  }}
+                  disabled={debateEnded}
+                  className="px-3 py-2 border rounded text-sm bg-red-50 text-red-700 border-red-300 disabled:opacity-50 min-h-[40px]">⏹ End Debate</button>
         </div>
       </header>
+
+      {controlError && (
+        <div className="mb-4 p-2 rounded bg-red-50 border border-red-300 text-sm text-red-800">
+          Control failed: {controlError}
+        </div>
+      )}
+
+      {interjections.length > 0 && (
+        <div className="mb-4 p-3 rounded bg-blue-50 border border-blue-200">
+          <div className="text-sm font-semibold text-blue-900">Moderator notes</div>
+          <ul className="text-sm text-blue-900 mt-1 list-disc pl-5 space-y-1">
+            {interjections.map((i, idx) => <li key={idx}><span className="font-medium">Round {i.roundNumber}:</span> {i.text}</li>)}
+          </ul>
+        </div>
+      )}
 
       <div className="mb-12 min-h-[260px]">
         {speakingDebater && speakingSpeech ? (
@@ -74,7 +114,7 @@ export function Stage({ debate, replay }: { debate: DebateConfig; replay?: { rou
         ) : null}
       </div>
 
-      <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${debate.debaters.length}, minmax(0, 1fr))` }}>
+      <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(auto-fit, minmax(140px, 1fr))` }}>
         {debate.debaters.map((d) => {
           const team = debate.teams.find((t) => t.id === d.teamId);
           const active = speakingDebater?.id === d.id;
@@ -93,12 +133,12 @@ export function Stage({ debate, replay }: { debate: DebateConfig; replay?: { rou
                 const rounds = j.transcript?.rounds ?? [];
                 const latest = rounds[rounds.length - 1];
                 if (!latest) return;
-                postControl(debate.id, { action: "vote", roundId: latest.roundId, debaterId });
+                ctrl({ action: "vote", roundId: latest.roundId, debaterId });
                 setVotedFor({ roundId: latest.roundId, debaterId });
               });
           }}
         />
-        <InterjectInput onSend={(text) => postControl(debate.id, { action: "interject", text })} />
+        <InterjectInput onSend={(text) => ctrl({ action: "interject", text })} />
       </div>
 
       {state.huddleActive && (
@@ -112,15 +152,15 @@ export function Stage({ debate, replay }: { debate: DebateConfig; replay?: { rou
       />
 
       {showVerdict && state.verdict && (
-        <div className="mt-8 p-4 border-2 border-amber-400 bg-amber-50 rounded">
+        <div className="mt-8 p-4 border-2 border-amber-400 bg-amber-50 rounded text-gray-900">
           <div className="font-bold mb-1">Verdict</div>
           <div>Winner: {findWinnerLabel(debate, state.verdict)}</div>
-          <p className="text-sm mt-2">{state.verdict.reasoning}</p>
+          <p className="text-sm mt-2 whitespace-pre-wrap">{state.verdict.reasoning}</p>
           <div className="mt-3 pt-3 border-t border-amber-300 flex flex-wrap gap-2 items-center">
             <span className="text-sm font-semibold">Override winner:</span>
             {debate.debaters.map((d) => (
               <button key={d.id}
-                      className="px-3 py-1 border rounded text-sm bg-white"
+                      className="px-3 py-2 border rounded text-sm bg-white text-gray-900 min-h-[40px]"
                       onClick={() =>
                         fetch(`/api/debates/${debate.id}/verdict`, {
                           method: "PATCH",
@@ -131,6 +171,12 @@ export function Stage({ debate, replay }: { debate: DebateConfig; replay?: { rou
                 {d.displayName}
               </button>
             ))}
+          </div>
+          <div className="mt-4 pt-4 border-t border-amber-300">
+            <a href="/"
+               className="inline-block px-4 py-2 border rounded text-sm bg-white text-gray-900 font-semibold hover:bg-gray-50 min-h-[40px]">
+              ← Back to Home
+            </a>
           </div>
         </div>
       )}

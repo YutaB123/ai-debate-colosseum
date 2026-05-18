@@ -20,6 +20,11 @@ export async function POST(req: Request, ctx: { params: { id: string } }): Promi
     case "pause":   engine.signals.paused = true;  return NextResponse.json({ ok: true });
     case "resume":  engine.signals.paused = false; return NextResponse.json({ ok: true });
     case "skip":    engine.signals.skipCurrent = true; return NextResponse.json({ ok: true });
+    case "end":
+      engine.signals.endDebate = true;
+      engine.signals.paused = false;
+      engine.signals.skipCurrent = true;
+      return NextResponse.json({ ok: true });
     case "interject":
       if (typeof body.text !== "string" || body.text.length === 0)
         return NextResponse.json({ error: "text required" }, { status: 400 });

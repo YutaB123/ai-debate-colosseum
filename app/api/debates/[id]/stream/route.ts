@@ -45,7 +45,7 @@ export async function GET(req: Request, ctx: { params: { id: string } }): Promis
 
   // Otherwise start a fresh run, registering this connection as the first observer.
   return createSseStream(async (push, close) => {
-    const signals = { paused: false, skipCurrent: false, pendingInterjection: null as string | null };
+    const signals = { paused: false, skipCurrent: false, endDebate: false, pendingInterjection: null as string | null };
     registerEngine({ debate, signals, observers: new Set([push]) });
     req.signal.addEventListener("abort", () => detachObserver(id, push));
     try {

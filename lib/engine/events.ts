@@ -7,5 +7,6 @@ export type EngineEvent =
   | { type: "whisper"; teamId: string; debaterId: string; text: string }
   | { type: "huddle_end"; roundNumber: number }
   | { type: "round_end"; roundNumber: number }
+  | { type: "interjection_received"; roundNumber: number; text: string }
   | { type: "verdict"; winnerDebaterId: string | null; winnerTeamId: string | null; reasoning: string }
   | { type: "error"; message: string };
