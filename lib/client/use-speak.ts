@@ -3,8 +3,8 @@ import { useEffect, useRef } from "react";
 
 export interface SpeakArgs {
   voiceUri: string;
-  text: string; // full streamed text so far
-  active: boolean; // only speak when this debater is the active speaker
+  text: string;
+  active: boolean;
 }
 
 export function extractSentences(buffer: string): { sentences: string[]; rest: string } {
@@ -20,32 +20,39 @@ export function extractSentences(buffer: string): { sentences: string[]; rest: s
   return { sentences: sentences.map((s) => s.trim()), rest: buffer.slice(lastIdx) };
 }
 
+// Speaks `text` aloud as it grows. Debounces by 600ms so we don't fragment words
+// during streaming, and don't require `active` to ever be true within a render
+// (React often batches turn_start → chunks → turn_end into a single update).
 export function useSpeak(args: SpeakArgs) {
   const lastSpokenUpTo = useRef(0);
+  const prevTextLen = useRef(0);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (!args.active) return;
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
 
-    const buf = args.text.slice(lastSpokenUpTo.current);
-    const { sentences, rest } = extractSentences(buf);
-    if (sentences.length === 0) return;
-
-    const voices = window.speechSynthesis.getVoices();
-    const voice = voices.find((v) => v.voiceURI === args.voiceUri);
-
-    for (const s of sentences) {
-      const u = new SpeechSynthesisUtterance(s);
-      if (voice) u.voice = voice;
-      window.speechSynthesis.speak(u);
-    }
-    lastSpokenUpTo.current = args.text.length - rest.length;
-  }, [args.text, args.active, args.voiceUri]);
-
-  useEffect(() => {
-    if (!args.active && typeof window !== "undefined" && "speechSynthesis" in window) {
-      // When this debater becomes inactive, cancel any leftover queued speech and reset cursor.
+    // Text shrunk → new speech started; reset cursor and cancel any pending flush.
+    if (args.text.length < prevTextLen.current) {
       lastSpokenUpTo.current = 0;
     }
-  }, [args.active]);
+    prevTextLen.current = args.text.length;
+
+    if (timer.current) clearTimeout(timer.current);
+    if (args.text.length <= lastSpokenUpTo.current) return;
+
+    timer.current = setTimeout(() => {
+      const newText = args.text.slice(lastSpokenUpTo.current).trim();
+      if (!newText) return;
+      const voices = window.speechSynthesis.getVoices();
+      const voice = args.voiceUri ? voices.find((v) => v.voiceURI === args.voiceUri) : undefined;
+      const u = new SpeechSynthesisUtterance(newText);
+      if (voice) u.voice = voice;
+      window.speechSynthesis.speak(u);
+      lastSpokenUpTo.current = args.text.length;
+    }, 600);
+
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+    };
+  }, [args.text, args.voiceUri]);
 }

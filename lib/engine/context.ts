@@ -73,12 +73,17 @@ export function buildSpeechContext(args: BuildArgs): ProviderMessage[] {
     : `You may pick any defensible position on this topic. State your position clearly in your first turn and defend it consistently for the rest of the debate — do not switch sides mid-debate.`;
 
   const systemPrompt = [
-    `You are ${speaker.displayName}, debating in a structured debate.`,
+    `You are ${speaker.displayName}, in a live spoken back-and-forth debate.`,
     `Topic: "${debate.topic}".`,
     stanceLine,
     teamLine,
-    `This is round ${roundNumber} of ${debate.roundCount}.`,
-    `Speak for at most ${debate.maxTokens} tokens. Be direct and substantive — no preamble, no signoff.`,
+    ``,
+    `Speak the way a real person speaks in a real-time argument:`,
+    `- VERY SHORT. 1-2 sentences. Hard cap ${debate.maxTokens} tokens.`,
+    `- React directly to what the previous speaker JUST said. Quote a phrase of theirs, push back, build on it, or ask a sharp question. Don't repeat your prior points.`,
+    `- First person, contractions, casual phrasing. Example tone: "I think pineapple belongs on pizza because the sweetness cuts the salt." Then the next speaker: "Yeah but it makes the crust soggy — that ruins the texture."`,
+    `- No preamble, no signoff, no bullet points, no headers, no formal essay structure.`,
+    `- If you're the FIRST to speak, open with your one-line stance. If you're responding, open by engaging with the prior speaker (e.g., "But you said...", "Sure, but...", "That ignores...").`,
   ].filter(Boolean).join("\n");
 
   const messages: ProviderMessage[] = [{ role: "system", content: systemPrompt }];

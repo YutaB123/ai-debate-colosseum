@@ -2,6 +2,7 @@
 import clsx from "clsx";
 import type { Debater, Team } from "../lib/types";
 import { findModel } from "../lib/providers/catalog";
+import { ProviderLogo } from "./provider-logo";
 
 export function Podium({
   debater, team, active, disabled,
@@ -16,6 +17,9 @@ export function Podium({
       {team && (
         <div className="h-2 -mx-3 -mt-3 mb-2 rounded-t" style={{ background: team.color }} />
       )}
+      <div className="flex justify-center mb-2">
+        <ProviderLogo provider={debater.provider} size={40} />
+      </div>
       <div className="font-bold">{debater.displayName} {active && "🔊"}</div>
       <div className="text-xs text-gray-500">{desc?.label}</div>
       <div className="text-sm font-semibold mt-1" style={{ color: desc?.brandColor }}>

@@ -4,7 +4,7 @@ import type { DB } from "./connection";
 export interface TranscriptRound {
   roundId: string;
   roundNumber: number;
-  speeches: { debaterId: string; text: string; tokenCount: number; error: string | null }[];
+  speeches: { debaterId: string; text: string; tokenCount: number; error: string | null; endedAt: number | null }[];
   whispers: { debaterId: string; teamId: string; text: string }[];
   votes: { debaterId: string }[];
   interjections: { text: string }[];
@@ -81,7 +81,7 @@ export function getFullTranscript(db: DB, debateId: string): FullTranscript {
   const rounds = db.prepare(`SELECT id, round_number FROM rounds WHERE debate_id = ? ORDER BY round_number`).all(debateId) as any[];
   const out: TranscriptRound[] = rounds.map((r) => {
     const speeches = db.prepare(
-      `SELECT debater_id as debaterId, text, token_count as tokenCount, error
+      `SELECT debater_id as debaterId, text, token_count as tokenCount, error, ended_at as endedAt
        FROM speeches WHERE round_id = ? ORDER BY started_at`
     ).all(r.id) as any[];
     const whispers = db.prepare(

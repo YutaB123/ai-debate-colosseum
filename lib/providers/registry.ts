@@ -4,7 +4,7 @@ import { createOpenAIProvider } from "./openai";
 import { createAnthropicProvider } from "./anthropic";
 import { createGeminiProvider } from "./gemini";
 
-const KNOWN: ProviderId[] = ["openai", "anthropic", "deepseek", "gemini"];
+const KNOWN: ProviderId[] = ["openai", "anthropic", "gemini"];
 
 export function getProvider(id: ProviderId): StreamingProvider {
   if (!KNOWN.includes(id)) {
@@ -16,11 +16,6 @@ export function getProvider(id: ProviderId): StreamingProvider {
   switch (id) {
     case "openai":
       return createOpenAIProvider({ apiKey: requireEnv("OPENAI_API_KEY") });
-    case "deepseek":
-      return createOpenAIProvider({
-        apiKey: requireEnv("DEEPSEEK_API_KEY"),
-        baseURL: "https://api.deepseek.com/v1",
-      });
     case "anthropic":
       return createAnthropicProvider({ apiKey: requireEnv("ANTHROPIC_API_KEY") });
     case "gemini":

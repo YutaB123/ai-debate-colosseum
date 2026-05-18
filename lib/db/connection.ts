@@ -2,7 +2,7 @@ import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
 
-const SCHEMA_PATH = path.join(__dirname, "schema.sql");
+const SCHEMA_PATH = path.join(process.cwd(), "lib", "db", "schema.sql");
 
 export type DB = ReturnType<typeof Database>;
 

@@ -12,8 +12,8 @@ function mkDebate(): DebateConfig {
     debaters: [
       { id: "claude", debateId: "d", provider: "anthropic", model: "claude-opus-4-7",
         displayName: "Claude", stance: "wet", teamId: "t1", speakOrder: 0, voiceUri: "v", disabled: false },
-      { id: "ds",     debateId: "d", provider: "deepseek",  model: "deepseek-chat",
-        displayName: "DeepSeek", stance: "wet", teamId: "t1", speakOrder: 1, voiceUri: "v", disabled: false },
+      { id: "ds",     debateId: "d", provider: "gemini",    model: "gemini-2.5-flash",
+        displayName: "Flash", stance: "wet", teamId: "t1", speakOrder: 1, voiceUri: "v", disabled: false },
       { id: "gpt",    debateId: "d", provider: "openai",    model: "gpt-4o",
         displayName: "GPT", stance: "dry", teamId: "t2", speakOrder: 2, voiceUri: "v", disabled: false },
       { id: "gem",    debateId: "d", provider: "gemini",    model: "gemini-1.5-pro",
@@ -24,10 +24,10 @@ function mkDebate(): DebateConfig {
 
 const transcript = [
   { roundId: "r1", roundNumber: 1, speeches: [
-    { debaterId: "claude", text: "Wet because plasma.", tokenCount: 5, error: null },
-    { debaterId: "ds",     text: "Wet because steam.",  tokenCount: 5, error: null },
-    { debaterId: "gpt",    text: "Dry by definition.",  tokenCount: 5, error: null },
-    { debaterId: "gem",    text: "Dry: lacks water.",   tokenCount: 5, error: null },
+    { debaterId: "claude", text: "Wet because plasma.", tokenCount: 5, error: null, endedAt: null },
+    { debaterId: "ds",     text: "Wet because steam.",  tokenCount: 5, error: null, endedAt: null },
+    { debaterId: "gpt",    text: "Dry by definition.",  tokenCount: 5, error: null, endedAt: null },
+    { debaterId: "gem",    text: "Dry: lacks water.",   tokenCount: 5, error: null, endedAt: null },
   ], whispers: [
     { debaterId: "claude", teamId: "t1", text: "BLUE_SECRET" },
     { debaterId: "gpt",    teamId: "t2", text: "RED_SECRET" },

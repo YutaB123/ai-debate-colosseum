@@ -17,8 +17,8 @@ function buildConfig() {
     debaters: [
       { provider: "openai", model: "gpt-4o", displayName: "G", stance: "yes", teamIndex: 0, speakOrder: 0, voiceUri: "v" },
       { provider: "anthropic", model: "claude-opus-4-7", displayName: "C", stance: "yes", teamIndex: 0, speakOrder: 1, voiceUri: "v" },
-      { provider: "deepseek", model: "deepseek-chat", displayName: "D", stance: "no", teamIndex: 1, speakOrder: 2, voiceUri: "v" },
-      { provider: "gemini", model: "gemini-1.5-pro", displayName: "M", stance: "no", teamIndex: 1, speakOrder: 3, voiceUri: "v" },
+      { provider: "gemini", model: "gemini-2.5-flash", displayName: "F", stance: "no", teamIndex: 1, speakOrder: 2, voiceUri: "v" },
+      { provider: "anthropic", model: "claude-haiku-4-5-20251001", displayName: "M", stance: "no", teamIndex: 1, speakOrder: 3, voiceUri: "v" },
     ],
   });
   return { db, debate: getDebate(db, id)! };
@@ -31,8 +31,8 @@ describe("runHuddle", () => {
     const { db, debate } = buildConfig();
     setStubScript("gpt-4o",            { chunks: ["push X harder"] });
     setStubScript("claude-opus-4-7",   { chunks: ["I'll handle Y"] });
-    setStubScript("deepseek-chat",     { chunks: ["counter with Z"] });
-    setStubScript("gemini-1.5-pro",    { chunks: ["I'll close on W"] });
+    setStubScript("gemini-2.5-flash",  { chunks: ["counter with Z"] });
+    setStubScript("claude-haiku-4-5-20251001", { chunks: ["I'll close on W"] });
 
     const roundId = createRound(db, debate.id, 1);
     const events: EngineEvent[] = [];

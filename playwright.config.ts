@@ -13,7 +13,6 @@ export default defineConfig({
       DEBATE_DB_PATH: "./data/e2e.db",
       OPENAI_API_KEY: "stub",
       ANTHROPIC_API_KEY: "stub",
-      DEEPSEEK_API_KEY: "stub",
       GOOGLE_API_KEY: "stub",
     },
   },

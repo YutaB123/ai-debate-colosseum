@@ -19,7 +19,12 @@ export function createGeminiProvider(opts: { apiKey: string }): StreamingProvide
         const model = client.getGenerativeModel({
           model: req.model,
           systemInstruction: systemPart || undefined,
-          generationConfig: { maxOutputTokens: req.maxTokens },
+          // Gemini 2.5 reserves "thinking" tokens from the output budget by default,
+          // which can eat the entire allowance for short replies. Disable it.
+          generationConfig: {
+            maxOutputTokens: req.maxTokens,
+            thinkingConfig: { thinkingBudget: 0 },
+          } as any,
         });
 
         const result = await model.generateContentStream({ contents: history });

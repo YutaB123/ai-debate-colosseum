@@ -1,4 +1,5 @@
 import type { DebateConfig } from "../types";
+import type { EngineEvent } from "./events";
 
 export interface ControlSignals {
   paused: boolean;
@@ -9,7 +10,7 @@ export interface ControlSignals {
 export interface EngineState {
   debate: DebateConfig;
   signals: ControlSignals;
-  emit: (event: import("./events").EngineEvent) => void;
+  observers: Set<(event: EngineEvent) => void>;
 }
 
 const engines = new Map<string, EngineState>();
@@ -24,4 +25,20 @@ export function getEngine(debateId: string): EngineState | undefined {
 
 export function unregisterEngine(debateId: string) {
   engines.delete(debateId);
+}
+
+export function attachObserver(debateId: string, observer: (event: EngineEvent) => void) {
+  engines.get(debateId)?.observers.add(observer);
+}
+
+export function detachObserver(debateId: string, observer: (event: EngineEvent) => void) {
+  engines.get(debateId)?.observers.delete(observer);
+}
+
+export function broadcast(debateId: string, event: EngineEvent) {
+  const e = engines.get(debateId);
+  if (!e) return;
+  e.observers.forEach((obs) => {
+    try { obs(event); } catch { /* observer closed; ignore */ }
+  });
 }

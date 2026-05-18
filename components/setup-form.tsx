@@ -25,7 +25,7 @@ export function SetupForm() {
   const router = useRouter();
   const [topic, setTopic] = useState("");
   const [rounds, setRounds] = useState(10);
-  const [maxTokens, setMaxTokens] = useState(150);
+  const [maxTokens, setMaxTokens] = useState(60);
   const [teamsEnabled, setTeamsEnabled] = useState(false);
   const [judgeModel, setJudgeModel] = useState("openai:gpt-4o");
   const [debaters, setDebaters] = useState<DebaterRow[]>([blankDebater(0), blankDebater(1), blankDebater(2), blankDebater(3)]);
@@ -79,13 +79,14 @@ export function SetupForm() {
 
       <div className="grid grid-cols-2 gap-4">
         <label className="block">
-          <span className="font-semibold">Rounds</span>
+          <span className="font-semibold">Exchanges per debater</span>
           <input type="number" min={1} max={20} className="mt-1 w-full border rounded px-3 py-2"
                  value={rounds} onChange={(e) => setRounds(Number(e.target.value))} />
+          <span className="text-xs text-gray-500">How many times each debater speaks. 10 ≈ a real back-and-forth.</span>
         </label>
         <label className="block">
-          <span className="font-semibold">Max tokens per turn (~30s ≈ 150 tokens)</span>
-          <input type="range" min={50} max={500} step={10}
+          <span className="font-semibold">Tokens per turn (≈ 1-3 sentences)</span>
+          <input type="range" min={30} max={300} step={10}
                  value={maxTokens} onChange={(e) => setMaxTokens(Number(e.target.value))}
                  className="mt-3 w-full" />
           <span className="text-sm text-gray-600">{maxTokens} tokens</span>

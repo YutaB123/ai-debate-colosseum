@@ -1,9 +1,11 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { useSse } from "../../../lib/client/use-sse";
-import { useSpeak } from "../../../lib/client/use-speak";
+import { useNarrator } from "../../../lib/client/use-narrator";
 import { Podium } from "../../../components/podium";
 import { SpeechBubble } from "../../../components/speech-bubble";
+import { ProviderLogo } from "../../../components/provider-logo";
+import { findModel } from "../../../lib/providers/catalog";
 import { postControl } from "../../../lib/client/api";
 import { VoteBar } from "../../../components/vote-bar";
 import { InterjectInput } from "../../../components/interject-input";
@@ -12,7 +14,10 @@ import type { DebateConfig, Debater, Team } from "../../../lib/types";
 import type { EngineEvent } from "../../../lib/engine/events";
 
 export function Stage({ debate, replay }: { debate: DebateConfig; replay?: { rounds: any[]; verdict: any } }) {
-  const live = useSse<EngineEvent>(replay ? null : `/api/debates/${debate.id}/stream`);
+  const live = useSse<EngineEvent>(
+    replay ? null : `/api/debates/${debate.id}/stream`,
+    { stopWhen: (e) => (e as EngineEvent).type === "verdict" },
+  );
   const replayed = useReplayEvents(replay, debate);
   const events = replay ? replayed.events : live.events;
   const connected = replay ? replayed.done : live.connected;
@@ -21,12 +26,30 @@ export function Stage({ debate, replay }: { debate: DebateConfig; replay?: { rou
   const [paused, setPaused] = useState(false);
   const [votedFor, setVotedFor] = useState<{ roundId: string; debaterId: string } | null>(null);
 
+  // The narrator plays speeches one at a time and drives all UI sync.
+  const narrator = useNarrator(state.speeches, debate.debaters);
+
+  // What the audience is currently hearing (not necessarily what the engine just emitted).
+  const speakingSpeech = narrator.speakingIndex >= 0 ? state.speeches[narrator.speakingIndex] : null;
+  const speakingDebater = speakingSpeech
+    ? debate.debaters.find((d) => d.id === speakingSpeech.debaterId) ?? null
+    : null;
+  const revealedText = speakingSpeech ? speakingSpeech.text.slice(0, narrator.spokenChars) : "";
+
+  // Transcript follows the narrator: show fully-played speeches in full,
+  // the currently-spoken one progressively, and hide anything past it.
+  const transcriptSpeeches = state.speeches.slice(0, narrator.playedThrough + 1);
+  const narrationLagging = narrator.playedThrough < state.speeches.length - 1 || narrator.speakingIndex >= 0;
+  const showVerdict = state.verdict && !narrationLagging;
+
+  const heardCount = (narrator.playedThrough + 1) + (narrator.speakingIndex >= 0 ? 1 : 0);
+
   return (
     <main className="min-h-screen bg-gradient-to-b from-yellow-50 to-white p-6">
       <header className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-bold">{debate.topic}</h1>
         <div className="text-sm">
-          Round {state.roundNumber}/{debate.roundCount} · {connected ? "● live" : "○ disconnected"}
+          {showVerdict ? "done" : `turn ${Math.max(heardCount, 1)}`} · {connected ? "● live" : "○ disconnected"}
         </div>
         <div className="flex gap-2">
           <button onClick={() => {
@@ -40,21 +63,22 @@ export function Stage({ debate, replay }: { debate: DebateConfig; replay?: { rou
         </div>
       </header>
 
-      <div className="mb-8 min-h-[180px]">
-        {state.activeDebater && (
-          <SpeechBubble debater={state.activeDebater}
-                        text={state.currentText}
-                        tokenProgress={state.currentTokens}
-                        maxTokens={debate.maxTokens} />
-        )}
+      <div className="mb-12 min-h-[260px]">
+        {speakingDebater && speakingSpeech ? (
+          <SpeechBubble debater={speakingDebater}
+                        text={revealedText}
+                        tokenProgress={Math.round(narrator.spokenChars / 4)}
+                        maxTokens={Math.max(debate.maxTokens, Math.round(speakingSpeech.text.length / 4))} />
+        ) : narrationLagging ? (
+          <div className="text-center text-gray-500 italic pt-12">…the next speaker is preparing…</div>
+        ) : null}
       </div>
 
       <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${debate.debaters.length}, minmax(0, 1fr))` }}>
         {debate.debaters.map((d) => {
           const team = debate.teams.find((t) => t.id === d.teamId);
-          const active = state.activeDebater?.id === d.id;
-          return <PodiumSlot key={d.id} debater={d} team={team} active={active}
-                             debateText={state.textByDebater[d.id] ?? ""} />;
+          const active = speakingDebater?.id === d.id;
+          return <PodiumSlot key={d.id} debater={d} team={team} active={active} />;
         })}
       </div>
 
@@ -81,7 +105,13 @@ export function Stage({ debate, replay }: { debate: DebateConfig; replay?: { rou
         <HuddlePanel debate={debate} whispers={state.currentHuddleWhispers} />
       )}
 
-      {state.verdict && (
+      <TranscriptPanel
+        debate={debate}
+        speeches={transcriptSpeeches}
+        activeSpeech={speakingSpeech ? { debaterId: speakingSpeech.debaterId, text: revealedText } : null}
+      />
+
+      {showVerdict && state.verdict && (
         <div className="mt-8 p-4 border-2 border-amber-400 bg-amber-50 rounded">
           <div className="font-bold mb-1">Verdict</div>
           <div>Winner: {findWinnerLabel(debate, state.verdict)}</div>
@@ -114,9 +144,67 @@ export function Stage({ debate, replay }: { debate: DebateConfig; replay?: { rou
   );
 }
 
-function PodiumSlot({ debater, team, active, debateText }: { debater: Debater; team?: Team; active: boolean; debateText: string }) {
-  useSpeak({ voiceUri: debater.voiceUri, text: debateText, active });
+function PodiumSlot({ debater, team, active }: { debater: Debater; team?: Team; active: boolean }) {
   return <Podium debater={debater} team={team} active={active} disabled={debater.disabled} />;
+}
+
+function TranscriptPanel({ debate, speeches, activeSpeech }: {
+  debate: DebateConfig;
+  speeches: CompletedSpeech[];
+  activeSpeech: { debaterId: string; text: string } | null;
+}) {
+  if (speeches.length === 0 && !activeSpeech) return null;
+  const nameById = new Map(debate.debaters.map((d) => [d.id, d.displayName]));
+  const colorById = new Map(
+    debate.debaters.map((d) => [d.id, findModel(d.provider, d.model)?.brandColor ?? "#888"])
+  );
+  return (
+    <section className="mt-8 max-w-3xl mx-auto">
+      <h2 className="text-lg font-bold mb-3">Conversation</h2>
+      <div className="space-y-3">
+        {speeches.map((s, i) => {
+          const dbtr = debate.debaters.find((d) => d.id === s.debaterId);
+          return (
+            <div key={i} className="border-l-4 pl-3 bg-white border rounded-r p-3"
+                 style={{ borderLeftColor: colorById.get(s.debaterId) }}>
+              <div className="flex items-center gap-2">
+                {dbtr && <ProviderLogo provider={dbtr.provider} size={24} />}
+                <div className="text-sm font-semibold" style={{ color: colorById.get(s.debaterId) }}>
+                  {nameById.get(s.debaterId) ?? s.debaterId}
+                  {s.error && <span className="ml-2 text-xs text-red-600">(interrupted: {s.error})</span>}
+                </div>
+              </div>
+              <p className="text-base leading-relaxed mt-1 whitespace-pre-wrap">{s.text || <span className="text-gray-400 italic">(no text)</span>}</p>
+            </div>
+          );
+        })}
+        {activeSpeech && (() => {
+          const dbtr = debate.debaters.find((d) => d.id === activeSpeech.debaterId);
+          return (
+            <div className="border-l-4 pl-3 bg-white border rounded-r p-3 animate-pulse"
+                 style={{ borderLeftColor: colorById.get(activeSpeech.debaterId) }}>
+              <div className="flex items-center gap-2">
+                {dbtr && <ProviderLogo provider={dbtr.provider} size={24} />}
+                <div className="text-sm font-semibold" style={{ color: colorById.get(activeSpeech.debaterId) }}>
+                  {nameById.get(activeSpeech.debaterId) ?? activeSpeech.debaterId}
+                </div>
+              </div>
+              <p className="text-base leading-relaxed mt-1 whitespace-pre-wrap">
+                {activeSpeech.text || <span className="text-gray-400 italic">…thinking…</span>}
+              </p>
+            </div>
+          );
+        })()}
+      </div>
+    </section>
+  );
+}
+
+interface CompletedSpeech {
+  roundNumber: number;
+  debaterId: string;
+  text: string;
+  error: string | null;
 }
 
 interface DerivedState {
@@ -125,6 +213,7 @@ interface DerivedState {
   currentText: string;
   currentTokens: number;
   textByDebater: Record<string, string>;
+  speeches: CompletedSpeech[];
   verdict: { winnerDebaterId: string | null; winnerTeamId: string | null; reasoning: string } | null;
   errors: string[];
   huddleActive: boolean;
@@ -137,6 +226,8 @@ function deriveState(debate: DebateConfig, events: EngineEvent[]): DerivedState 
   let currentText = "";
   let currentTokens = 0;
   const textByDebater: Record<string, string> = {};
+  const speechMap = new Map<string, CompletedSpeech>();
+  let currentRoundForTurn = 1;
   let verdict: DerivedState["verdict"] = null;
   const errors: string[] = [];
   let huddleActive = false;
@@ -146,24 +237,33 @@ function deriveState(debate: DebateConfig, events: EngineEvent[]): DerivedState 
     switch (e.type) {
       case "turn_start":
         roundNumber = e.roundNumber;
+        currentRoundForTurn = e.roundNumber;
         activeId = e.debaterId;
         currentText = "";
         currentTokens = 0;
         textByDebater[e.debaterId] = "";
         break;
       case "chunk":
-        if (activeId === e.debaterId) {
-          currentText += e.text;
-          currentTokens = Math.max(1, Math.round(currentText.length / 4));
-          textByDebater[e.debaterId] = currentText;
+        if (activeId !== e.debaterId) {
+          activeId = e.debaterId;
+          currentText = textByDebater[e.debaterId] ?? "";
         }
+        currentText += e.text;
+        currentTokens = Math.max(1, Math.round(currentText.length / 4));
+        textByDebater[e.debaterId] = currentText;
         break;
       case "turn_end":
         textByDebater[e.debaterId] = e.fullText;
+        speechMap.set(`${currentRoundForTurn}|${e.debaterId}`, {
+          roundNumber: currentRoundForTurn, debaterId: e.debaterId, text: e.fullText, error: null,
+        });
         activeId = null;
         break;
       case "turn_error":
         textByDebater[e.debaterId] = e.partialText;
+        speechMap.set(`${currentRoundForTurn}|${e.debaterId}`, {
+          roundNumber: currentRoundForTurn, debaterId: e.debaterId, text: e.partialText, error: e.reason,
+        });
         errors.push(`${e.debaterId} failed: ${e.reason}`);
         activeId = null;
         break;
@@ -187,7 +287,13 @@ function deriveState(debate: DebateConfig, events: EngineEvent[]): DerivedState 
     }
   }
   const activeDebater = activeId ? debate.debaters.find((d) => d.id === activeId) ?? null : null;
-  return { roundNumber, activeDebater, currentText, currentTokens, textByDebater, verdict, errors, huddleActive, currentHuddleWhispers };
+  const speeches = Array.from(speechMap.values()).sort((a, b) => {
+    if (a.roundNumber !== b.roundNumber) return a.roundNumber - b.roundNumber;
+    const ai = debate.debaters.findIndex((d) => d.id === a.debaterId);
+    const bi = debate.debaters.findIndex((d) => d.id === b.debaterId);
+    return ai - bi;
+  });
+  return { roundNumber, activeDebater, currentText, currentTokens, textByDebater, speeches, verdict, errors, huddleActive, currentHuddleWhispers };
 }
 
 function findWinnerLabel(debate: DebateConfig, v: { winnerDebaterId: string | null; winnerTeamId: string | null }): string {
