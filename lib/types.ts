@@ -1,4 +1,4 @@
-export type ProviderId = "openai" | "anthropic" | "gemini";
+export type ProviderId = "openai" | "anthropic" | "gemini" | "grok";
 
 export interface ProviderMessage {
   role: "system" | "user" | "assistant";

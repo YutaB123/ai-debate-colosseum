@@ -3,8 +3,9 @@ import { createStubProvider } from "./stub";
 import { createOpenAIProvider } from "./openai";
 import { createAnthropicProvider } from "./anthropic";
 import { createGeminiProvider } from "./gemini";
+import { createGrokProvider } from "./grok";
 
-const KNOWN: ProviderId[] = ["openai", "anthropic", "gemini"];
+const KNOWN: ProviderId[] = ["openai", "anthropic", "gemini", "grok"];
 
 export function getProvider(id: ProviderId): StreamingProvider {
   if (!KNOWN.includes(id)) {
@@ -20,6 +21,8 @@ export function getProvider(id: ProviderId): StreamingProvider {
       return createAnthropicProvider({ apiKey: requireEnv("ANTHROPIC_API_KEY") });
     case "gemini":
       return createGeminiProvider({ apiKey: requireEnv("GOOGLE_API_KEY") });
+    case "grok":
+      return createGrokProvider({ apiKey: requireEnv("XAI_API_KEY") });
   }
 }
 

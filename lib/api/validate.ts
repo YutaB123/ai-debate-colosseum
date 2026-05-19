@@ -46,5 +46,6 @@ export function providerEnvVar(p: ProviderId): string {
     case "openai": return "OPENAI_API_KEY";
     case "anthropic": return "ANTHROPIC_API_KEY";
     case "gemini": return "GOOGLE_API_KEY";
+    case "grok": return "XAI_API_KEY";
   }
 }

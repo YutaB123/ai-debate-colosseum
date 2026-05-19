@@ -6,6 +6,7 @@ const PROVIDER_META: Record<ProviderId, { letter: string; bg: string; fg: string
   openai:    { letter: "O", bg: "#10a37f", fg: "#ffffff", label: "OpenAI" },
   anthropic: { letter: "A", bg: "#d97757", fg: "#ffffff", label: "Anthropic" },
   gemini:    { letter: "G", bg: "#4285f4", fg: "#ffffff", label: "Google" },
+  grok:      { letter: "X", bg: "#000000", fg: "#ffffff", label: "xAI" },
 };
 
 export function ProviderLogo({ provider, size = 32 }: { provider: ProviderId; size?: number }) {
