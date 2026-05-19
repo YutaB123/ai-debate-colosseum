@@ -1,4 +1,4 @@
-name: CI/CD
+name: CI
 
 on:
   push:
@@ -8,7 +8,6 @@ on:
 
 env:
   NODE_VERSION: "22.x"
-  AZURE_WEBAPP_NAME: ai-debate-yutab-qsait
 
 jobs:
   build-and-test:
@@ -35,47 +34,5 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Prune to production dependencies
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: npm prune --omit=dev
-
-      - name: Package for deploy
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: |
-          zip -r release.zip \
-            .next \
-            public \
-            node_modules \
-            package.json \
-            package-lock.json \
-            next.config.mjs \
-            -x ".next/cache/*"
-
-      - name: Upload deploy artifact
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@v4
-        with:
-          name: webapp
-          path: release.zip
-          retention-days: 7
-
-  deploy:
-    name: Deploy to Azure App Service
-    needs: build-and-test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    environment:
-      name: production
-      url: https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net
-    steps:
-      - name: Download artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: webapp
-
-      - name: Deploy
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: ${{ env.AZURE_WEBAPP_NAME }}
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: release.zip
+# Deployment is handled by Render — it watches main and auto-deploys
+# via the render.yaml Blueprint. See README for setup steps.
