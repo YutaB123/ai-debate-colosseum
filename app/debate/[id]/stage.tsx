@@ -10,8 +10,37 @@ import { postControl } from "../../../lib/client/api";
 import { VoteBar } from "../../../components/vote-bar";
 import { InterjectInput } from "../../../components/interject-input";
 import { HuddlePanel } from "../../../components/huddle-panel";
-import type { DebateConfig, Debater, Team } from "../../../lib/types";
+import type { DebateConfig, Debater, ProviderId, Team } from "../../../lib/types";
 import type { EngineEvent } from "../../../lib/engine/events";
+
+async function pollForVerdict(
+  debateId: string,
+  setFallbackVerdict: (v: { winnerDebaterId: string | null; winnerTeamId: string | null; reasoning: string }) => void,
+) {
+  for (let i = 0; i < 10; i++) {
+    await new Promise((r) => setTimeout(r, 1500));
+    try {
+      const res = await fetch(`/api/debates/${debateId}`);
+      if (!res.ok) continue;
+      const j = await res.json();
+      const v = j.transcript?.verdict;
+      if (v) {
+        setFallbackVerdict({
+          winnerDebaterId: v.winnerDebaterId,
+          winnerTeamId: v.winnerTeamId,
+          reasoning: v.reasoning,
+        });
+        return;
+      }
+    } catch { /* keep trying */ }
+  }
+}
+
+function parseProviderModel(s: string): { provider: ProviderId | null; model: string } {
+  const i = s.indexOf(":");
+  if (i < 0) return { provider: null, model: s };
+  return { provider: s.slice(0, i) as ProviderId, model: s.slice(i + 1) };
+}
 
 export function Stage({ debate, replay }: { debate: DebateConfig; replay?: { rounds: any[]; verdict: any } }) {
   const live = useSse<EngineEvent>(
@@ -22,11 +51,19 @@ export function Stage({ debate, replay }: { debate: DebateConfig; replay?: { rou
   const events = replay ? replayed.events : live.events;
   const connected = replay ? replayed.done : live.connected;
 
-  const state = useMemo(() => deriveState(debate, events), [debate, events]);
+  const derived = useMemo(() => deriveState(debate, events), [debate, events]);
   const [paused, setPaused] = useState(false);
   const [votedFor, setVotedFor] = useState<{ roundId: string; debaterId: string } | null>(null);
   const [controlError, setControlError] = useState<string | null>(null);
   const [ending, setEnding] = useState(false);
+  const [fallbackVerdict, setFallbackVerdict] = useState<DerivedState["verdict"]>(null);
+
+  // Merge the SSE-driven verdict with the polled fallback (in case the engine
+  // never emits one — e.g. it failed before judgment).
+  const state: DerivedState = useMemo(() => {
+    if (derived.verdict || !fallbackVerdict) return derived;
+    return { ...derived, verdict: fallbackVerdict };
+  }, [derived, fallbackVerdict]);
 
   const ctrl = async (action: any) => {
     setControlError(null);
@@ -48,6 +85,23 @@ export function Stage({ debate, replay }: { debate: DebateConfig; replay?: { rou
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
     window.speechSynthesis.cancel();
   }, [ending]);
+
+  // When the verdict arrives, have the judge "take the stage" and read it
+  // out loud in TTS. Fire-once on the verdict transition.
+  const verdictReasoning = state.verdict?.reasoning ?? null;
+  useEffect(() => {
+    if (!verdictReasoning) return;
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    window.speechSynthesis.cancel();
+    const winnerName = state.verdict ? findWinnerLabel(debate, state.verdict) : null;
+    const intro = winnerName && winnerName !== "no clear winner"
+      ? `My verdict: ${winnerName} wins. `
+      : "My verdict: ";
+    const u = new SpeechSynthesisUtterance(intro + verdictReasoning);
+    u.rate = 1.0;
+    window.speechSynthesis.speak(u);
+    return () => { window.speechSynthesis.cancel(); };
+  }, [verdictReasoning, debate, state.verdict]);
 
   // What the audience is currently hearing (not necessarily what the engine just emitted).
   const speakingSpeech = !ending && narrator.speakingIndex >= 0 ? state.speeches[narrator.speakingIndex] : null;
@@ -90,6 +144,11 @@ export function Stage({ debate, replay }: { debate: DebateConfig; replay?: { rou
                     if (!confirm("End the debate now? The judge will evaluate whatever has been said so far.")) return;
                     setEnding(true);
                     await ctrl({ action: "end" });
+                    // Belt-and-suspenders: if the SSE verdict event never
+                    // arrives (engine crashed, network blip, etc.), poll the
+                    // DB so the UI doesn't hang on the "judge is finishing up"
+                    // banner forever.
+                    void pollForVerdict(debate.id, setFallbackVerdict);
                   }}
                   disabled={debateEnded}
                   className="px-3 py-2 border rounded text-sm bg-red-50 text-red-700 border-red-300 disabled:opacity-50 min-h-[40px]">⏹ End Debate</button>
@@ -155,7 +214,7 @@ export function Stage({ debate, replay }: { debate: DebateConfig; replay?: { rou
 
         {/* row of podiums */}
         <div
-          className="relative grid gap-3 sm:gap-5 items-end"
+          className={"relative grid gap-3 sm:gap-5 items-end transition-opacity duration-700 " + (state.verdict ? "opacity-50" : "")}
           style={{ gridTemplateColumns: `repeat(auto-fit, minmax(110px, 1fr))` }}
         >
           {debate.debaters.map((d) => {
@@ -164,6 +223,10 @@ export function Stage({ debate, replay }: { debate: DebateConfig; replay?: { rou
             return <PodiumSlot key={d.id} debater={d} team={team} active={active} />;
           })}
         </div>
+
+        {state.verdict && (
+          <JudgeAnnouncement debate={debate} verdict={state.verdict} />
+        )}
 
         {/* stage floor wash at the bottom */}
         <div
@@ -242,6 +305,73 @@ export function Stage({ debate, replay }: { debate: DebateConfig; replay?: { rou
         </div>
       )}
     </main>
+  );
+}
+
+function JudgeAnnouncement({
+  debate,
+  verdict,
+}: {
+  debate: DebateConfig;
+  verdict: { winnerDebaterId: string | null; winnerTeamId: string | null; reasoning: string };
+}) {
+  const { provider: judgeProvider, model: judgeModelId } = parseProviderModel(debate.judgeModel);
+  const judgeDesc = judgeProvider ? findModel(judgeProvider, judgeModelId) : undefined;
+  const winnerName = findWinnerLabel(debate, verdict);
+
+  return (
+    <div className="relative z-10 mt-10 flex flex-col items-center">
+      {/* spotlight on the judge */}
+      <div
+        aria-hidden
+        className="absolute -top-20 left-1/2 -translate-x-1/2 w-72 h-72 pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(ellipse 60% 80% at 50% 0%, rgba(255,250,220,0.7), rgba(255,240,180,0.25) 40%, transparent 70%)",
+          filter: "blur(10px)",
+        }}
+      />
+
+      {/* judge avatar (provider logo as the "head") */}
+      <div className="z-10 mb-[-12px] drop-shadow-[0_0_20px_rgba(255,255,255,0.65)]">
+        {judgeProvider ? <ProviderLogo provider={judgeProvider} size={80} /> : null}
+      </div>
+
+      {/* judge podium */}
+      <div
+        className="relative w-full max-w-md mx-auto"
+        style={{
+          clipPath: "polygon(8% 0%, 92% 0%, 100% 100%, 0% 100%)",
+          background:
+            "linear-gradient(180deg, rgba(255,255,255,0.25) 0%, rgba(180,200,255,0.10) 35%, rgba(255,255,255,0.05) 100%)",
+          backdropFilter: "blur(6px)",
+          WebkitBackdropFilter: "blur(6px)",
+          boxShadow: "0 0 50px rgba(255,210,74,0.55), inset 0 1px 0 rgba(255,255,255,0.45)",
+          paddingTop: 22, paddingBottom: 26, paddingLeft: 16, paddingRight: 16,
+        }}
+      >
+        <div
+          className="bg-[#0b1d4a] text-white text-center px-3 py-2 mx-auto"
+          style={{ borderTop: "2px solid #ffd24a", maxWidth: "94%" }}
+        >
+          <div className="text-xs uppercase tracking-[0.2em] font-extrabold" style={{ color: "#ffd24a" }}>
+            ★ THE JUDGE ★
+          </div>
+          <div className="mt-1 text-sm font-extrabold uppercase tracking-wider">
+            {judgeDesc?.label ?? debate.judgeModel}
+          </div>
+        </div>
+      </div>
+
+      {/* verdict bubble */}
+      <div className="mt-5 max-w-2xl w-full bg-white text-gray-900 rounded-lg shadow-2xl border-2 border-amber-400 px-4 py-3">
+        <div className="text-xs uppercase tracking-widest font-bold text-amber-700 mb-1">Verdict</div>
+        <div className="text-2xl font-extrabold mb-2">
+          {winnerName === "no clear winner" ? "No clear winner" : `${winnerName} wins`}
+        </div>
+        <p className="text-sm leading-relaxed whitespace-pre-wrap">{verdict.reasoning}</p>
+      </div>
+    </div>
   );
 }
 

@@ -7,6 +7,7 @@ import { runHuddle } from "./run-huddle";
 import { runJudgment } from "./run-judgment";
 import { createRound } from "../db/round-repo";
 import { setDebateStatus } from "../db/repo";
+import { recordVerdict } from "../db/round-repo";
 
 export interface RunDebateArgs {
   db: DB;
@@ -38,7 +39,17 @@ export async function runDebate(args: RunDebateArgs): Promise<void> {
     });
     setDebateStatus(db, debate.id, "completed");
   } catch (e: any) {
-    emit({ type: "error", message: e?.message ?? String(e) });
+    const reason = e?.message ?? String(e);
+    emit({ type: "error", message: reason });
+    // Always emit a verdict event so the UI is never left hanging on "judge is
+    // finishing up…". The reasoning string carries the failure detail.
+    const failedVerdict = {
+      winnerDebaterId: null,
+      winnerTeamId: null,
+      reasoning: `Debate could not complete: ${reason}`,
+    };
+    try { recordVerdict(db, debate.id, failedVerdict); } catch { /* DB may be unhappy too; emit anyway */ }
+    emit({ type: "verdict", ...failedVerdict });
     setDebateStatus(db, debate.id, "failed");
   }
 }

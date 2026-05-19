@@ -149,17 +149,26 @@ export function buildJudgeContext(args: {
   }).join("\n");
 
   const reasoningLine = quickMode
-    ? `Output JSON: {"winnerDebater": "<displayName or null>", "winnerTeam": "<team name or null>", "reasoning": "<ONE sentence, max 20 words>"}.`
-    : `Output JSON: {"winnerDebater": "<displayName or null>", "winnerTeam": "<team name or null>", "reasoning": "<2-4 sentences>"}.`;
+    ? `Reasoning should be 1-2 short sentences, max 40 words.`
+    : `Reasoning should be 2-3 sentences, max 80 words.`;
 
   const systemPrompt = [
-    `You are an impartial judge for a structured debate.`,
-    quickMode ? `The debate was ended early. Pick a winner from what was said so far — don't overthink it.` : null,
+    `You are the judge of a debate, about to announce the winner out loud to the audience.`,
+    quickMode ? `The debate was ended early — make the call from what was said so far. Don't overthink it.` : null,
     `Topic: "${debate.topic}".`,
     `Debaters and stances:\n${debaterLines}`,
-    quickMode ? `Pick the single strongest debater (or strongest team if teams were used). Be decisive and brief.` : `Read the transcript carefully and pick the single strongest debater (or strongest team if teams were used).`,
+    ``,
+    `Pick the strongest single debater (or strongest team if teams were used).`,
+    ``,
+    `Speak the reasoning in FIRST PERSON, like you're a real person explaining what changed your mind. Don't write a formal essay — narrate your thought process:`,
+    `- Mention who you were leaning toward early on, and why.`,
+    `- Name the specific moment, line, or argument that actually swung your decision.`,
+    `- Be casual, opinionated, real. Use contractions. You can be a little blunt or amused.`,
+    `- Examples of the vibe: "Honestly I was rooting for Alice at the start — her opening was sharp — but Bob's point about long-tail effects just kept rattling around in my head, and Alice never really answered it." or "I'll be straight with you: nobody nailed this one, but Charlie at least had a coherent thread, while the other two contradicted themselves."`,
     reasoningLine,
-    `Output ONLY the JSON, no markdown.`,
+    ``,
+    `Output ONLY this JSON, no markdown, no commentary:`,
+    `{"winnerDebater": "<displayName or null>", "winnerTeam": "<team name or null>", "reasoning": "<your reasoning>"}`,
   ].filter(Boolean).join("\n");
 
   return [
