@@ -114,13 +114,54 @@ export function Stage({ debate, replay }: { debate: DebateConfig; replay?: { rou
         ) : null}
       </div>
 
-      <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(auto-fit, minmax(140px, 1fr))` }}>
-        {debate.debaters.map((d) => {
-          const team = debate.teams.find((t) => t.id === d.teamId);
-          const active = speakingDebater?.id === d.id;
-          return <PodiumSlot key={d.id} debater={d} team={team} active={active} />;
-        })}
-      </div>
+      <section
+        className="relative rounded-2xl overflow-hidden pt-20 pb-12 px-3 sm:px-6 mb-6 shadow-2xl"
+        style={{
+          background:
+            // soft purple wash from top center (the stage haze)
+            "radial-gradient(ellipse 70% 35% at 50% 0%, rgba(180,160,255,0.18), transparent 60%)," +
+            // curtain folds (repeating vertical bands)
+            "repeating-linear-gradient(90deg, #181550 0px, #2a2480 50px, #181550 100px, #16133a 140px)," +
+            // base
+            "linear-gradient(180deg, #16133a 0%, #0a0925 100%)",
+        }}
+      >
+        {/* hex-pattern strip across the top of the stage (the show-set canopy) */}
+        <div
+          aria-hidden
+          className="absolute inset-x-0 top-0 h-14 pointer-events-none opacity-40"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at center, rgba(255,255,255,0.25) 1px, transparent 1.6px)",
+            backgroundSize: "22px 22px",
+            maskImage: "linear-gradient(180deg, black, transparent)",
+            WebkitMaskImage: "linear-gradient(180deg, black, transparent)",
+          }}
+        />
+
+        {/* row of podiums */}
+        <div
+          className="relative grid gap-3 sm:gap-5 items-end"
+          style={{ gridTemplateColumns: `repeat(auto-fit, minmax(110px, 1fr))` }}
+        >
+          {debate.debaters.map((d) => {
+            const team = debate.teams.find((t) => t.id === d.teamId);
+            const active = speakingDebater?.id === d.id;
+            return <PodiumSlot key={d.id} debater={d} team={team} active={active} />;
+          })}
+        </div>
+
+        {/* stage floor wash at the bottom */}
+        <div
+          aria-hidden
+          className="absolute inset-x-0 bottom-0 h-16 pointer-events-none"
+          style={{
+            background:
+              "linear-gradient(180deg, transparent, rgba(0,0,0,0.55))," +
+              "radial-gradient(ellipse 60% 100% at 50% 100%, rgba(255,255,255,0.05), transparent 60%)",
+          }}
+        />
+      </section>
 
       <div className="mt-6 p-3 border rounded bg-white space-y-2 max-w-3xl mx-auto">
         <VoteBar
