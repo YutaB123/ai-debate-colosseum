@@ -1,8 +1,8 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CATALOG } from "../lib/providers/catalog";
 import { VoicePicker } from "./voice-picker";
+import { ModelPicker } from "./model-picker";
 import { createDebateApi } from "../lib/client/api";
 import type { ProviderId } from "../lib/types";
 
@@ -104,16 +104,14 @@ export function SetupForm() {
           {debaters.map((d, i) => (
             <div key={i} className="border rounded p-3 space-y-2">
               <div className="flex flex-wrap gap-2 items-center">
-                <select className="border rounded px-2 py-1 text-sm"
-                        value={`${d.provider}:${d.model}`}
-                        onChange={(e) => {
-                          const [p, m] = e.target.value.split(":");
-                          updateDebater(i, { provider: p as ProviderId, model: m });
-                        }}>
-                  {CATALOG.map((m) => (
-                    <option key={`${m.provider}:${m.model}`} value={`${m.provider}:${m.model}`}>{m.label}</option>
-                  ))}
-                </select>
+                <ModelPicker
+                  value={`${d.provider}:${d.model}`}
+                  excludeKeys={[judgeModel]}
+                  onChange={(v) => {
+                    const [p, m] = v.split(":");
+                    updateDebater(i, { provider: p as ProviderId, model: m });
+                  }}
+                />
                 <input className="border rounded px-2 py-1 text-sm w-32"
                        placeholder="Display name"
                        value={d.displayName}
@@ -149,16 +147,14 @@ export function SetupForm() {
         </div>
       </div>
 
-      <label className="block">
-        <span className="font-semibold">Judge (cannot be a debater)</span>
-        <select className="mt-1 border rounded px-2 py-1 text-sm"
-                value={judgeModel}
-                onChange={(e) => setJudgeModel(e.target.value)}>
-          {CATALOG.map((m) => (
-            <option key={`${m.provider}:${m.model}`} value={`${m.provider}:${m.model}`}>{m.label}</option>
-          ))}
-        </select>
-      </label>
+      <div className="block">
+        <div className="font-semibold mb-1">Judge (cannot be a debater)</div>
+        <ModelPicker
+          value={judgeModel}
+          excludeKeys={debaters.map((d) => `${d.provider}:${d.model}`)}
+          onChange={(v) => setJudgeModel(v)}
+        />
+      </div>
 
       {error && <div className="text-red-600 text-sm">{error}</div>}
       <button type="button" disabled={!canSubmit || submitting}
