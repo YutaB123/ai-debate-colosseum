@@ -44,6 +44,10 @@ yarn-error.log*
 # vercel
 .vercel
 
+# deploy artifacts
+release.zip
+deploy.zip
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
