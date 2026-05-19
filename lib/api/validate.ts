@@ -1,4 +1,4 @@
-import type { ProviderId } from "../types";
+import type { PersonaId, ProviderId } from "../types";
 
 export interface DebateRequestBody {
   topic: string;
@@ -15,6 +15,7 @@ export interface DebateRequestBody {
     teamIndex: number | null;
     speakOrder: number;
     voiceUri: string;
+    persona?: PersonaId;
   }[];
 }
 

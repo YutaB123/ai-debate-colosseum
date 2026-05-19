@@ -23,6 +23,8 @@ export interface StreamingProvider {
 export type DebateStatus = "setup" | "running" | "paused" | "completed" | "failed";
 export type RoundStatus = "pending" | "speaking" | "huddle" | "completed";
 
+export type PersonaId = "" | "calm" | "fiery" | "sarcastic" | "contrarian" | "pedantic" | "wild";
+
 export interface Debater {
   id: string;
   debateId: string;
@@ -34,6 +36,7 @@ export interface Debater {
   speakOrder: number;
   voiceUri: string;
   disabled: boolean;
+  persona: PersonaId;
 }
 
 export interface Team {

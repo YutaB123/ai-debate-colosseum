@@ -10,6 +10,7 @@ import { postControl } from "../../../lib/client/api";
 import { VoteBar } from "../../../components/vote-bar";
 import { InterjectInput } from "../../../components/interject-input";
 import { HuddlePanel } from "../../../components/huddle-panel";
+import { VibesMeter } from "../../../components/vibes-meter";
 import type { DebateConfig, Debater, ProviderId, Team } from "../../../lib/types";
 import type { EngineEvent } from "../../../lib/engine/events";
 
@@ -57,6 +58,8 @@ export function Stage({ debate, replay }: { debate: DebateConfig; replay?: { rou
   const [controlError, setControlError] = useState<string | null>(null);
   const [ending, setEnding] = useState(false);
   const [fallbackVerdict, setFallbackVerdict] = useState<DerivedState["verdict"]>(null);
+  const [vibesScores, setVibesScores] = useState<Record<string, number> | null>(null);
+  const [vibesLoading, setVibesLoading] = useState(false);
 
   // Merge the SSE-driven verdict with the polled fallback (in case the engine
   // never emits one — e.g. it failed before judgment).
@@ -85,6 +88,27 @@ export function Stage({ debate, replay }: { debate: DebateConfig; replay?: { rou
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
     window.speechSynthesis.cancel();
   }, [ending]);
+
+  // After each completed speech, refresh the vibes meter in the background.
+  // We count completed speeches in derived.speeches; when that number grows,
+  // fire a single scoring request. Replay debates don't need live scoring.
+  const completedSpeechCount = derived.speeches.length;
+  useEffect(() => {
+    if (replay) return;
+    if (completedSpeechCount === 0) return;
+    if (state.verdict) return; // debate over, no point scoring
+    let cancelled = false;
+    setVibesLoading(true);
+    fetch(`/api/debates/${debate.id}/vibes`, { method: "POST" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (cancelled || !j?.scores) return;
+        setVibesScores(j.scores);
+      })
+      .catch(() => { /* network blip; keep last scores */ })
+      .finally(() => { if (!cancelled) setVibesLoading(false); });
+    return () => { cancelled = true; };
+  }, [completedSpeechCount, replay, debate.id, state.verdict]);
 
   // When the verdict arrives, have the judge "take the stage" and read it
   // out loud in TTS. Fire-once on the verdict transition.
@@ -165,6 +189,10 @@ export function Stage({ debate, replay }: { debate: DebateConfig; replay?: { rou
         <div className="mb-4 p-3 rounded bg-amber-50 border border-amber-300 text-sm text-amber-900 font-medium">
           ⏹ Ending debate — the judge is finishing up…
         </div>
+      )}
+
+      {!state.verdict && !replay && state.speeches.length > 0 && (
+        <VibesMeter debate={debate} scores={vibesScores} loading={vibesLoading} />
       )}
 
       {interjections.length > 0 && (

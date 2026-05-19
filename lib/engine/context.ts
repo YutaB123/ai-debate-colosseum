@@ -1,5 +1,15 @@
-import type { DebateConfig, Debater, ProviderMessage } from "../types";
+import type { DebateConfig, Debater, PersonaId, ProviderMessage } from "../types";
 import type { TranscriptRound } from "../db/round-repo";
+
+const PERSONA_PROMPTS: Record<PersonaId, string | null> = {
+  "":           null,
+  "calm":       "Personality: you're calm and measured. You don't raise your voice, you concede small points to build credibility, you stay reasonable even when others get heated. Slow your pace.",
+  "fiery":      "Personality: you're fiery and passionate. Let frustration show. Don't be polite about weak arguments. Use intensifiers, raise the stakes, sound like you actually care.",
+  "sarcastic":  "Personality: you're dry and sarcastic. Mock weak arguments with rhetorical questions and gentle ridicule. Always sound a little amused at how wrong the other side is.",
+  "contrarian": "Personality: you're a contrarian. Find the angle nobody else is considering. Be skeptical of the obvious answer. Willing to defend an uncomfortable position to make people think.",
+  "pedantic":   "Personality: you're a stickler for definitions and precise language. Catch the other side using fuzzy or loaded terms. Quote their exact words back at them and demand they define what they meant.",
+  "wild":       "Personality: you're chaotic and unpredictable. Make unexpected analogies. Drop weird references. Follow your gut. Compare the topic to something nobody else would think of.",
+};
 
 export interface BuildArgs {
   debate: DebateConfig;
@@ -72,11 +82,14 @@ export function buildSpeechContext(args: BuildArgs): ProviderMessage[] {
     ? `Your assigned position: "${speaker.stance}". You must defend this position.`
     : `You may pick any defensible position on this topic. State your position clearly in your first turn and defend it consistently for the rest of the debate — do not switch sides mid-debate.`;
 
+  const personaLine = PERSONA_PROMPTS[speaker.persona] ?? null;
+
   const systemPrompt = [
     `You are ${speaker.displayName}, arguing with friends at a bar — not giving a speech.`,
     `Topic: "${debate.topic}".`,
     stanceLine,
     teamLine,
+    personaLine,
     ``,
     `Sound like a real person, not an AI:`,
     `- VERY SHORT. 1-2 sentences. Hard cap ${debate.maxTokens} tokens.`,

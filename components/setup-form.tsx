@@ -38,7 +38,17 @@ function pickRandomTopic(current: string): string {
   return choices[Math.floor(Math.random() * choices.length)];
 }
 import { createDebateApi } from "../lib/client/api";
-import type { ProviderId } from "../lib/types";
+import type { PersonaId, ProviderId } from "../lib/types";
+
+const PERSONAS: { id: PersonaId; label: string; emoji: string }[] = [
+  { id: "",           label: "Default",     emoji: "—"  },
+  { id: "calm",       label: "Calm",        emoji: "🧘" },
+  { id: "fiery",      label: "Fiery",       emoji: "🔥" },
+  { id: "sarcastic",  label: "Sarcastic",   emoji: "😏" },
+  { id: "contrarian", label: "Contrarian",  emoji: "🙃" },
+  { id: "pedantic",   label: "Pedantic",    emoji: "🤓" },
+  { id: "wild",       label: "Wild",        emoji: "🎲" },
+];
 
 interface DebaterRow {
   provider: ProviderId;
@@ -48,11 +58,12 @@ interface DebaterRow {
   aiChoosesStance: boolean;
   teamIndex: number | null;
   voiceUri: string;
+  persona: PersonaId;
 }
 
 const blankDebater = (i: number): DebaterRow => ({
   provider: "openai", model: "gpt-4o", displayName: "Debater " + (i + 1),
-  stance: "", aiChoosesStance: false, teamIndex: null, voiceUri: "",
+  stance: "", aiChoosesStance: false, teamIndex: null, voiceUri: "", persona: "",
 });
 
 export function SetupForm() {
@@ -90,7 +101,7 @@ export function SetupForm() {
           provider: d.provider, model: d.model, displayName: d.displayName,
           stance: d.aiChoosesStance ? "" : d.stance,
           teamIndex: teamsEnabled ? (d.teamIndex ?? 0) : null,
-          speakOrder: i, voiceUri: d.voiceUri,
+          speakOrder: i, voiceUri: d.voiceUri, persona: d.persona,
         })),
       };
       const { id } = await createDebateApi(body);
@@ -159,6 +170,14 @@ export function SetupForm() {
                        value={d.displayName}
                        onChange={(e) => updateDebater(i, { displayName: e.target.value })} />
                 <VoicePicker value={d.voiceUri} onChange={(v) => updateDebater(i, { voiceUri: v })} />
+                <select className="border rounded px-2 py-1 text-sm"
+                        title="Personality (changes how this AI argues)"
+                        value={d.persona}
+                        onChange={(e) => updateDebater(i, { persona: e.target.value as PersonaId })}>
+                  {PERSONAS.map((p) => (
+                    <option key={p.id} value={p.id}>{p.emoji} {p.label}</option>
+                  ))}
+                </select>
                 {teamsEnabled && (
                   <select className="border rounded px-2 py-1 text-sm"
                           value={d.teamIndex ?? 0}

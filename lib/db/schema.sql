@@ -27,7 +27,8 @@ CREATE TABLE IF NOT EXISTS debaters (
   team_id      TEXT REFERENCES teams(id),
   speak_order  INTEGER NOT NULL,
   voice_uri    TEXT NOT NULL,
-  disabled     INTEGER NOT NULL DEFAULT 0
+  disabled     INTEGER NOT NULL DEFAULT 0,
+  persona      TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS rounds (

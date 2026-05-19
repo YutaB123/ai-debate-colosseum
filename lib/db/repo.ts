@@ -1,6 +1,6 @@
 import type { DB } from "./connection";
 import { randomUUID } from "node:crypto";
-import type { DebateConfig, DebateStatus, ProviderId } from "../types";
+import type { DebateConfig, DebateStatus, PersonaId, ProviderId } from "../types";
 
 export interface CreateDebateInput {
   topic: string;
@@ -17,6 +17,7 @@ export interface CreateDebateInput {
     teamIndex: number | null;
     speakOrder: number;
     voiceUri: string;
+    persona?: PersonaId;
   }[];
 }
 
@@ -33,8 +34,8 @@ export function createDebate(db: DB, input: CreateDebateInput): string {
   );
   const insertDebater = db.prepare(
     `INSERT INTO debaters (id, debate_id, provider, model, display_name, stance,
-                           team_id, speak_order, voice_uri, disabled)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`
+                           team_id, speak_order, voice_uri, disabled, persona)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)`
   );
 
   const tx = db.transaction(() => {
@@ -49,7 +50,7 @@ export function createDebate(db: DB, input: CreateDebateInput): string {
       insertDebater.run(
         randomUUID(), id, d.provider, d.model, d.displayName, d.stance,
         d.teamIndex !== null ? teamIds[d.teamIndex] : null,
-        d.speakOrder, d.voiceUri,
+        d.speakOrder, d.voiceUri, d.persona ?? "",
       );
     }
   });
@@ -74,7 +75,7 @@ export function getDebate(db: DB, id: string): DebateConfig | null {
       id: d.id, debateId: d.debate_id, provider: d.provider as ProviderId,
       model: d.model, displayName: d.display_name, stance: d.stance,
       teamId: d.team_id, speakOrder: d.speak_order, voiceUri: d.voice_uri,
-      disabled: !!d.disabled,
+      disabled: !!d.disabled, persona: (d.persona ?? "") as PersonaId,
     })),
   };
 }

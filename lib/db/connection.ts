@@ -15,7 +15,15 @@ export function openDb(file: string = "./data/debate.db"): DB {
   db.pragma("foreign_keys = ON");
   const schema = fs.readFileSync(SCHEMA_PATH, "utf8");
   db.exec(schema);
+  applyMigrations(db);
   return db;
+}
+
+function applyMigrations(db: DB) {
+  const cols = db.prepare(`PRAGMA table_info(debaters)`).all() as { name: string }[];
+  if (!cols.some((c) => c.name === "persona")) {
+    db.exec(`ALTER TABLE debaters ADD COLUMN persona TEXT NOT NULL DEFAULT ''`);
+  }
 }
 
 let singleton: DB | null = null;

@@ -1,8 +1,18 @@
 "use client";
 import clsx from "clsx";
-import type { Debater, Team } from "../lib/types";
+import type { Debater, PersonaId, Team } from "../lib/types";
 import { findModel } from "../lib/providers/catalog";
 import { ProviderLogo } from "./provider-logo";
+
+const PERSONA_BADGE: Record<PersonaId, { emoji: string; label: string } | null> = {
+  "":           null,
+  "calm":       { emoji: "🧘", label: "Calm" },
+  "fiery":      { emoji: "🔥", label: "Fiery" },
+  "sarcastic":  { emoji: "😏", label: "Sarcastic" },
+  "contrarian": { emoji: "🙃", label: "Contrarian" },
+  "pedantic":   { emoji: "🤓", label: "Pedantic" },
+  "wild":       { emoji: "🎲", label: "Wild" },
+};
 
 export function Podium({
   debater, team, active, disabled,
@@ -52,11 +62,20 @@ export function Podium({
           paddingTop: 18, paddingBottom: 20, paddingLeft: 10, paddingRight: 10,
         }}
       >
-        <div className="bg-[#0b1d4a] text-white text-center px-2 py-2 mx-auto"
+        <div className="bg-[#0b1d4a] text-white text-center px-2 py-2 mx-auto relative"
              style={{ borderTop: `2px solid ${accent}`, maxWidth: "94%" }}>
           <div className="text-[11px] font-extrabold uppercase tracking-wider leading-tight break-words">
             {debater.displayName}
           </div>
+          {PERSONA_BADGE[debater.persona] && (
+            <div
+              className="absolute -top-2 -right-2 bg-amber-300 text-[#0b1d4a] rounded-full w-6 h-6 flex items-center justify-center text-sm shadow-lg"
+              title={PERSONA_BADGE[debater.persona]?.label ?? ""}
+              aria-label={PERSONA_BADGE[debater.persona]?.label ?? ""}
+            >
+              {PERSONA_BADGE[debater.persona]?.emoji}
+            </div>
+          )}
         </div>
 
         <div className="mt-1 mx-auto text-center bg-[#0b1d4a] px-2 py-1.5" style={{ maxWidth: "94%" }}>

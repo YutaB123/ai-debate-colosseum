@@ -1,4 +1,4 @@
-import type { DebateConfig, ProviderId } from "../types";
+import type { DebateConfig, PersonaId, ProviderId } from "../types";
 
 export interface CreateDebateBody {
   topic: string;
@@ -15,6 +15,7 @@ export interface CreateDebateBody {
     teamIndex: number | null;
     speakOrder: number;
     voiceUri: string;
+    persona?: PersonaId;
   }[];
 }
 
