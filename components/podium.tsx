@@ -12,8 +12,9 @@ export function Podium({
 
   return (
     <div className={clsx(
-      "relative flex flex-col items-center transition-all duration-300",
-      active && !disabled && "scale-[1.08] -translate-y-1",
+      "relative flex flex-col items-center transition-all duration-500 ease-out",
+      active && !disabled && "scale-[1.10] -translate-y-7",
+      !active && !disabled && "opacity-75 saturate-75",
       disabled && "opacity-30 grayscale",
     )}>
       {active && !disabled && (

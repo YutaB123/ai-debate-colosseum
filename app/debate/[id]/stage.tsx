@@ -41,17 +41,25 @@ export function Stage({ debate, replay }: { debate: DebateConfig; replay?: { rou
   // The narrator plays speeches one at a time and drives all UI sync.
   const narrator = useNarrator(state.speeches, debate.debaters);
 
+  // When the user ends the debate, cancel any in-flight TTS so the verdict
+  // can show immediately instead of waiting for queued narration to finish.
+  useEffect(() => {
+    if (!ending) return;
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    window.speechSynthesis.cancel();
+  }, [ending]);
+
   // What the audience is currently hearing (not necessarily what the engine just emitted).
-  const speakingSpeech = narrator.speakingIndex >= 0 ? state.speeches[narrator.speakingIndex] : null;
+  const speakingSpeech = !ending && narrator.speakingIndex >= 0 ? state.speeches[narrator.speakingIndex] : null;
   const speakingDebater = speakingSpeech
     ? debate.debaters.find((d) => d.id === speakingSpeech.debaterId) ?? null
     : null;
   const revealedText = speakingSpeech ? speakingSpeech.text.slice(0, narrator.spokenChars) : "";
 
-  // Transcript follows the narrator: show fully-played speeches in full,
-  // the currently-spoken one progressively, and hide anything past it.
-  const transcriptSpeeches = state.speeches.slice(0, narrator.playedThrough + 1);
-  const narrationLagging = narrator.playedThrough < state.speeches.length - 1 || narrator.speakingIndex >= 0;
+  // Transcript follows the narrator normally, but if the debate is being
+  // force-ended we reveal everything so the verdict isn't gated on narration.
+  const transcriptSpeeches = ending ? state.speeches : state.speeches.slice(0, narrator.playedThrough + 1);
+  const narrationLagging = !ending && (narrator.playedThrough < state.speeches.length - 1 || narrator.speakingIndex >= 0);
   const showVerdict = state.verdict && !narrationLagging;
 
   const heardCount = (narrator.playedThrough + 1) + (narrator.speakingIndex >= 0 ? 1 : 0);
@@ -91,6 +99,12 @@ export function Stage({ debate, replay }: { debate: DebateConfig; replay?: { rou
       {controlError && (
         <div className="mb-4 p-2 rounded bg-red-50 border border-red-300 text-sm text-red-800">
           Control failed: {controlError}
+        </div>
+      )}
+
+      {ending && !state.verdict && (
+        <div className="mb-4 p-3 rounded bg-amber-50 border border-amber-300 text-sm text-amber-900 font-medium">
+          ⏹ Ending debate — the judge is finishing up…
         </div>
       )}
 
