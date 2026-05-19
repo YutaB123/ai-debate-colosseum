@@ -73,17 +73,23 @@ export function buildSpeechContext(args: BuildArgs): ProviderMessage[] {
     : `You may pick any defensible position on this topic. State your position clearly in your first turn and defend it consistently for the rest of the debate — do not switch sides mid-debate.`;
 
   const systemPrompt = [
-    `You are ${speaker.displayName}, in a live spoken back-and-forth debate.`,
+    `You are ${speaker.displayName}, arguing with friends at a bar — not giving a speech.`,
     `Topic: "${debate.topic}".`,
     stanceLine,
     teamLine,
     ``,
-    `Speak the way a real person speaks in a real-time argument:`,
+    `Sound like a real person, not an AI:`,
     `- VERY SHORT. 1-2 sentences. Hard cap ${debate.maxTokens} tokens.`,
-    `- React directly to what the previous speaker JUST said. Quote a phrase of theirs, push back, build on it, or ask a sharp question. Don't repeat your prior points.`,
-    `- First person, contractions, casual phrasing. Example tone: "I think pineapple belongs on pizza because the sweetness cuts the salt." Then the next speaker: "Yeah but it makes the crust soggy — that ruins the texture."`,
-    `- No preamble, no signoff, no bullet points, no headers, no formal essay structure.`,
-    `- If you're the FIRST to speak, open with your one-line stance. If you're responding, open by engaging with the prior speaker (e.g., "But you said...", "Sure, but...", "That ignores...").`,
+    `- Be human. Casual contractions, slang, filler words ("look", "honestly", "I mean", "c'mon", "okay so"). Real emotion — frustration, sarcasm, amusement, exasperation. Roast bad arguments. Crack jokes.`,
+    `- Mild profanity is welcome when it lands naturally ("damn", "hell", "what the heck", "that's BS", "bullshit"). Don't force it; don't sanitize either. Talk like an opinionated friend, not a corporate spokesperson.`,
+    `- React directly to what the previous speaker JUST said. Quote their phrase back, push back hard, build on it, or fire a sharp question. Don't repeat your prior points.`,
+    `- No "I would argue that...", no "in conclusion", no signoffs, no bullets, no headers, no essay scaffolding. Just talk.`,
+    `- If you're the FIRST to speak, drop your stance in one punchy line. Otherwise open by engaging with the prior speaker ("Hold on —", "Wait, you said...", "Nah, that ignores...", "Sure, but...").`,
+    ``,
+    `Examples of the vibe you should match:`,
+    `- "Pineapple on pizza is amazing. The salt-sweet thing is the whole point — anyone calling it a war crime has never actually tried it."`,
+    `- "Oh c'mon, that's exactly the kind of cop-out argument people make when they don't have data. You can't just vibe your way out of a numbers problem."`,
+    `- "Look, I'll be honest — that take is kind of insane. Remote work didn't kill productivity, your manager just misses watching people."`,
   ].filter(Boolean).join("\n");
 
   const messages: ProviderMessage[] = [{ role: "system", content: systemPrompt }];
@@ -130,22 +136,31 @@ export function buildHuddleContext(args: BuildArgs): ProviderMessage[] {
   ];
 }
 
-export function buildJudgeContext(args: { debate: DebateConfig; transcript: TranscriptRound[] }): ProviderMessage[] {
-  const { debate, transcript } = args;
+export function buildJudgeContext(args: {
+  debate: DebateConfig;
+  transcript: TranscriptRound[];
+  quickMode?: boolean;
+}): ProviderMessage[] {
+  const { debate, transcript, quickMode } = args;
   const debaterLines = debate.debaters.map((d) => {
     const teamSuffix = debate.teamsEnabled ? `, team ${teamName(debate, d.teamId)}` : "";
     const stanceLabel = d.stance ? `"${d.stance}"` : "(picked own side — read transcript to see what they argued)";
     return `- ${d.displayName} (${d.provider}/${d.model}${teamSuffix}): ${stanceLabel}`;
   }).join("\n");
 
+  const reasoningLine = quickMode
+    ? `Output JSON: {"winnerDebater": "<displayName or null>", "winnerTeam": "<team name or null>", "reasoning": "<ONE sentence, max 20 words>"}.`
+    : `Output JSON: {"winnerDebater": "<displayName or null>", "winnerTeam": "<team name or null>", "reasoning": "<2-4 sentences>"}.`;
+
   const systemPrompt = [
     `You are an impartial judge for a structured debate.`,
+    quickMode ? `The debate was ended early. Pick a winner from what was said so far — don't overthink it.` : null,
     `Topic: "${debate.topic}".`,
     `Debaters and stances:\n${debaterLines}`,
-    `Read the transcript carefully and pick the single strongest debater (or strongest team if teams were used).`,
-    `Output JSON: {"winnerDebater": "<displayName or null>", "winnerTeam": "<team name or null>", "reasoning": "<2-4 sentences>"}.`,
+    quickMode ? `Pick the single strongest debater (or strongest team if teams were used). Be decisive and brief.` : `Read the transcript carefully and pick the single strongest debater (or strongest team if teams were used).`,
+    reasoningLine,
     `Output ONLY the JSON, no markdown.`,
-  ].join("\n");
+  ].filter(Boolean).join("\n");
 
   return [
     { role: "system", content: systemPrompt },

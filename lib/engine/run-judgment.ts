@@ -11,16 +11,19 @@ export interface RunJudgmentArgs {
   judgeProvider: ProviderId;
   judgeModel: string;
   emit: (e: EngineEvent) => void;
+  /** When the user force-ends a debate we want a quick verdict, not a long essay. */
+  quickMode?: boolean;
 }
 
 export async function runJudgment(args: RunJudgmentArgs): Promise<void> {
-  const { db, debate, judgeProvider, judgeModel, emit } = args;
+  const { db, debate, judgeProvider, judgeModel, emit, quickMode } = args;
   const transcript = getFullTranscript(db, debate.id).rounds;
-  const messages = buildJudgeContext({ debate, transcript });
+  const messages = buildJudgeContext({ debate, transcript, quickMode });
   const provider = getProvider(judgeProvider);
 
+  const maxTokens = quickMode ? 120 : 400;
   let raw = "";
-  for await (const chunk of provider.streamCompletion({ model: judgeModel, messages, maxTokens: 400 })) {
+  for await (const chunk of provider.streamCompletion({ model: judgeModel, messages, maxTokens })) {
     if (chunk.type === "text") raw += chunk.text;
     if (chunk.type === "error") {
       const v = { winnerDebaterId: null, winnerTeamId: null, reasoning: `(Judge unavailable: ${chunk.message})` };

@@ -67,6 +67,15 @@ export function VoicePicker({ value, onChange }: { value: string; onChange: (v: 
     return <span className="text-xs text-gray-500">(no English voices available)</span>;
   }
 
+  const pickRandom = () => {
+    if (voices.length === 0) return;
+    // Avoid re-picking the same voice when possible.
+    const choices = voices.length > 1 ? voices.filter((v) => v.voiceURI !== value) : voices;
+    const next = choices[Math.floor(Math.random() * choices.length)];
+    onChange(next.voiceURI);
+    previewVoice(next.voiceURI, voices);
+  };
+
   return (
     <span className="inline-flex items-center gap-1">
       <select
@@ -96,6 +105,12 @@ export function VoicePicker({ value, onChange }: { value: string; onChange: (v: 
         disabled={!value}
         onClick={() => previewVoice(value, voices)}
       >🔊</button>
+      <button
+        type="button"
+        title="Pick a random voice"
+        className="px-2 py-1 text-sm border rounded hover:bg-gray-50"
+        onClick={pickRandom}
+      >🎲</button>
     </span>
   );
 }

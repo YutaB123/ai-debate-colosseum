@@ -32,7 +32,10 @@ export async function runDebate(args: RunDebateArgs): Promise<void> {
     }
 
     const [jProvider, jModel] = parseJudgeModel(debate.judgeModel);
-    await runJudgment({ db, debate, judgeProvider: jProvider, judgeModel: jModel, emit });
+    await runJudgment({
+      db, debate, judgeProvider: jProvider, judgeModel: jModel, emit,
+      quickMode: signals.endDebate,
+    });
     setDebateStatus(db, debate.id, "completed");
   } catch (e: any) {
     emit({ type: "error", message: e?.message ?? String(e) });

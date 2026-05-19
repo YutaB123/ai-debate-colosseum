@@ -3,6 +3,40 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { VoicePicker } from "./voice-picker";
 import { ModelPicker } from "./model-picker";
+
+const TOPIC_SUGGESTIONS = [
+  "Should pineapple belong on pizza?",
+  "Is a hot dog a sandwich?",
+  "Are cats better pets than dogs?",
+  "Should the workweek be four days?",
+  "Is social media doing more harm than good?",
+  "Are paper books better than e-books?",
+  "Should self-driving cars be allowed on public roads?",
+  "Is the book always better than the movie?",
+  "Should AI-generated art count as real art?",
+  "Is coffee better than tea?",
+  "Should kids have smartphones before they're 14?",
+  "Is daylight saving time worth keeping?",
+  "Should voting be mandatory?",
+  "Are open-plan offices a mistake?",
+  "Should billionaires exist?",
+  "Is texting ruining the English language?",
+  "Should universities be free to attend?",
+  "Are remote workers more productive than office workers?",
+  "Should we try to colonize Mars in this century?",
+  "Are zoos ethical?",
+  "Should we ban single-use plastics outright?",
+  "Is space exploration worth the cost?",
+  "Should children be allowed to vote?",
+  "Is veganism the future of food?",
+  "Is cereal a soup?",
+];
+
+function pickRandomTopic(current: string): string {
+  if (TOPIC_SUGGESTIONS.length <= 1) return TOPIC_SUGGESTIONS[0];
+  const choices = TOPIC_SUGGESTIONS.filter((t) => t !== current);
+  return choices[Math.floor(Math.random() * choices.length)];
+}
 import { createDebateApi } from "../lib/client/api";
 import type { ProviderId } from "../lib/types";
 
@@ -72,9 +106,17 @@ export function SetupForm() {
     <div className="space-y-6">
       <label className="block">
         <span className="font-semibold">Topic</span>
-        <input className="mt-1 w-full border rounded px-3 py-2"
-               placeholder="Should AI systems be required to disclose when they are uncertain?"
-               value={topic} onChange={(e) => setTopic(e.target.value)} />
+        <div className="mt-1 flex gap-2">
+          <input className="flex-1 border rounded px-3 py-2"
+                 placeholder="Should AI systems disclose when they are uncertain?"
+                 value={topic} onChange={(e) => setTopic(e.target.value)} />
+          <button type="button"
+                  title="Pick a random debate topic"
+                  className="px-3 py-2 border rounded text-sm bg-white hover:bg-gray-50 whitespace-nowrap"
+                  onClick={() => setTopic(pickRandomTopic(topic))}>
+            🎲 Random topic
+          </button>
+        </div>
       </label>
 
       <div className="grid grid-cols-2 gap-4">
